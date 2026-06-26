@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Events\ContentUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Branch;
 use Illuminate\Http\JsonResponse;
@@ -57,7 +56,6 @@ class branchesController extends Controller
 
             DB::commit();
             logHistory($actor->username, request()->ip(), "Added branch: {$branch->name}");
-            try { broadcast(new ContentUpdated('branch', 'added', $branch->toArray(), $actor->username)); } catch (\Throwable $ignored) {}
             return response()->json([
                 'success' => true,
                 'message' => 'Branch added successfully.',
@@ -109,7 +107,6 @@ class branchesController extends Controller
 
             DB::commit();
             logHistory($actor->username, request()->ip(), "Updated branch: {$branch->name}");
-            try { broadcast(new ContentUpdated('branch', 'updated', $branch->fresh()->toArray(), $actor->username)); } catch (\Throwable $ignored) {}
             return response()->json([
                 'success' => true,
                 'message' => 'Branch updated successfully.',
@@ -128,7 +125,6 @@ class branchesController extends Controller
         $branch->delete();
         $actor = Auth::guard('admin')->user();
         logHistory($actor->username, request()->ip(), "Deleted branch: {$name}");
-        try { broadcast(new ContentUpdated('branch', 'deleted', ['id' => (int)$id], $actor->username)); } catch (\Throwable $ignored) {}
         return response()->json(['success' => true, 'message' => 'Branch deleted successfully.']);
     }
 }

@@ -56,7 +56,7 @@
         window._emergencyBadgeCount = Math.max(0, count);
         _renderBadge(window._emergencyBadgeCount);
     }
-// 
+
     function _updateBadge(delta) {
         window._emergencyBadgeCount = Math.max(0, (window._emergencyBadgeCount || 0) + delta);
         _renderBadge(window._emergencyBadgeCount);
@@ -126,30 +126,6 @@
     /* ── Global helpers: dispatch pool sync (emergency page) ─────────────── */
 
     function _rtSyncDispatchPools(data) {
-        if (data.module === 'ambulance') {
-            var a   = data.data;
-            var aid = String(a.id || a.ambulance_id || '');
-            if (!aid) return;
-
-            if (data.action === 'deleted') {
-                window.reqAmbulances = (window.reqAmbulances || []).filter(function (x) { return String(x.id) !== aid; });
-            } else {
-                var typeLabels = { '1': 'BLS', '2': 'ALS', '3': 'CCT', '4': 'Neonatal', '5': 'AIR' };
-                var typeLabel  = typeLabels[String(a.type)] || a.type;
-                var label      = (a.vehicle_number || '') + ' \u2014 ' + typeLabel;
-
-                window.reqAmbulances = (window.reqAmbulances || []).filter(function (x) { return String(x.id) !== aid; });
-
-                if (String(a.status) === '1') {
-                    window.reqAmbulances = (window.reqAmbulances || []).concat([{ id: a.id, label: label }]);
-                }
-            }
-
-            if (typeof window._refreshDispatchAmbulanceDropdown === 'function') {
-                window._refreshDispatchAmbulanceDropdown();
-            }
-        }
-
         if (data.module === 'driver') {
             var dr   = data.data;
             var drid = String(dr.id || '');
@@ -240,10 +216,6 @@
     ch.bind('content.updated', function (data) {
         if (typeof window.admAmbulanceContentUpdated === 'function') {
             window.admAmbulanceContentUpdated(data);
-        }
-
-        if (typeof window.admDriverContentUpdated === 'function') {
-            window.admDriverContentUpdated(data);
         }
 
         _rtSyncAmbulanceDriverDropdown(data);

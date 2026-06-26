@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Events\ContentUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Ambulance;
 use App\Models\Driver\Driver;
@@ -110,8 +109,6 @@ class AmbulanceController extends Controller
             DB::commit();
             logHistory($admin->username, $request->ip(), "Added ambulance: {$ambulance->vehicle_number} ({$ambulance->type})");
             $ambulance->load('driver');
-            try { broadcast(new ContentUpdated('ambulance', 'added', $ambulance->toArray(), $admin->name)); } catch (\Throwable $ignored) {}
-
             return response()->json([
                 'success'   => true,
                 'message'   => 'Ambulance added successfully.',
@@ -250,8 +247,6 @@ class AmbulanceController extends Controller
 
             DB::commit();
             logHistory($admin->username, $request->ip(), "Updated ambulance: {$ambulance->vehicle_number} — status: {$ambulance->status}");
-            try { broadcast(new ContentUpdated('ambulance', 'updated', $ambulance->toArray(), $admin->name)); } catch (\Throwable $ignored) {}
-
             return response()->json([
                 'success'   => true,
                 'message'   => 'Ambulance updated successfully.',
@@ -292,7 +287,6 @@ class AmbulanceController extends Controller
             $admin = Auth::guard('admin')->user();
             logHistory($admin->username, request()->ip(), "Deleted ambulance: {$vehicleNo}");
             DB::commit();
-            try { broadcast(new ContentUpdated('ambulance', 'deleted', ['id' => (int)$id], $admin->name)); } catch (\Throwable $ignored) {}
             return response()->json(['success' => true, 'message' => 'Ambulance removed.']);
         } catch (\Exception $e) {
             DB::rollBack();

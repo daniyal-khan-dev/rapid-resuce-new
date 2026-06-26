@@ -147,7 +147,7 @@ function deleteAmbulance(id) {
         .then(function (data) {
             if (data.success) {
                 showAlert('success', 'Ambulance deleted successfully.');
-                // Real-time event (content.updated) will remove the row for all tabs
+                setTimeout(function () { location.reload(); }, 900);
             } else {
                 showAlert('error', data.message || 'Delete failed.');
             }
@@ -181,11 +181,7 @@ function saveAmbulance() {
                 successMessage: isEdit ? 'Ambulance updated successfully.' : 'Ambulance added successfully.',
                 onSuccess: function (resData) {
                     bootstrap.Modal.getInstance(document.getElementById('ambModal'))?.hide();
-                    var action = isEdit ? 'updated' : 'added';
-                    var ambData = (resData && resData.ambulance) ? resData.ambulance : null;
-                    if (ambData && typeof window.admAmbulanceContentUpdated === 'function') {
-                        window.admAmbulanceContentUpdated({ module: 'ambulance', action: action, data: ambData });
-                    }
+                    setTimeout(function () { location.reload(); }, 900);
                 },
                 onError: function () {
                     const btn = document.getElementById('ambSubmitBtn');
@@ -232,91 +228,3 @@ function _flashRow(row) {
     row.style.background = 'rgba(99,102,241,0.12)';
     setTimeout(function () { row.style.background = ''; }, 1400);
 }
-
-/* ── Real-Time handler: ambulance content.updated ────────────────────────── */
-window.admAmbulanceContentUpdated = function (event) {
-    if (event.module !== 'ambulance') return;
-
-    var tbody = document.querySelector('#ambTable tbody');
-    if (!tbody) return;   // Not on the ambulances page
-
-    var data   = event.data;
-    var action = event.action;
-    var aid    = String(data.id || '');
-
-    if (action === 'deleted') {
-        var row = tbody.querySelector('tr[data-ambulance-id="' + aid + '"]');
-        if (row) {
-            row.style.transition = 'opacity 0.4s';
-            row.style.opacity    = '0';
-            setTimeout(function () { row.remove(); if (window.PGD) PGD.rebuild('amb'); }, 400);
-        }
-        if (typeof showAlert === 'function') showAlert('success', 'Ambulance removed successfully.');
-        return;
-    }
-
-    if (action === 'added') {
-        // Skip if row already exists (inserted directly from the AJAX response)
-        if (tbody.querySelector('tr[data-ambulance-id="' + aid + '"]')) return;
-
-        var noResults = document.getElementById('ambNoResults');
-        if (noResults) noResults.style.display = 'none';
-
-        tbody.insertAdjacentHTML('afterbegin', _buildAmbulanceRow(data));
-        var inserted = tbody.querySelector('tr[data-ambulance-id="' + aid + '"]');
-        if (inserted) _flashRow(inserted);
-        if (window.PGD) PGD.rebuild('amb');
-        if (typeof showAlert === 'function') showAlert('success', 'New ambulance added: ' + (data.vehicle_number || ''));
-        return;
-    }
-
-    if (action === 'updated') {
-        var existingRow = tbody.querySelector('tr[data-ambulance-id="' + aid + '"]');
-        if (existingRow) {
-            var stCfg      = _ambStatusCfg[String(data.status)] || { label: data.status, cls: 'status-3' };
-            var typeLabel  = _ambTypeLabels[String(data.type)]  || data.type || '—';
-            var equipLabel = _ambEquipLabels[String(data.equipment_level)] || '—';
-            var equipCls   = String(data.equipment_level) === '2' ? 'badge-advanced' : 'badge-basic';
-            var driverHtml = (data.driver && data.driver.name)
-                ? '<span style="font-family:monospace;background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:6px;font-size:0.82rem;">' + _escHtml(data.driver.name) + '</span>'
-                : '<span style="color:rgba(255,255,255,0.25);">—</span>';
-
-            // Update data attributes
-            existingRow.setAttribute('data-status', data.status);
-            existingRow.setAttribute('data-vehicle', (data.vehicle_number || '').toLowerCase());
-
-            var cells = existingRow.querySelectorAll('td');
-            // cell[1] = vehicle number
-            if (cells[1]) {
-                cells[1].innerHTML = '<div class="d-flex align-items-center gap-2">'
-                    + '<div class="adm-icon-preview" style="width:30px;height:30px;border-radius:7px;font-size:0.78rem;"><i class="fa fa-ambulance"></i></div>'
-                    + '<strong>' + _escHtml(data.vehicle_number || '') + '</strong></div>';
-            }
-            // cell[2] = type
-            if (cells[2]) cells[2].innerHTML = '<span class="badge rounded-pill badge-type">' + _escHtml(typeLabel) + '</span>';
-            // cell[3] = equipment
-            if (cells[3]) cells[3].innerHTML = '<span class="badge rounded-pill ' + equipCls + '">' + _escHtml(equipLabel) + '</span>';
-            // cell[4] = status
-            if (cells[4]) cells[4].innerHTML = '<span class="status-pill ' + stCfg.cls + '">' + stCfg.label + '</span>';
-            // cell[5] = driver
-            if (cells[5]) cells[5].innerHTML = driverHtml;
-            // cell[6] = actions — rebuild with fresh data (JSON must be &quot;-escaped for HTML attributes)
-            if (cells[6]) {
-                cells[6].innerHTML = '<div class="d-flex gap-1">'
-                    + '<button class="btn-adm-icon btn-adm-icon--edit" title="Edit" onclick="openEditModal(' + data.id + ',' + JSON.stringify(data).replace(/"/g, '&quot;') + ')"><i class="fa fa-pen"></i></button>'
-                    + '<button class="btn-adm-icon btn-adm-icon--danger" title="Delete" onclick="deleteAmbulance(' + data.id + ')"><i class="fa fa-trash"></i></button>'
-                    + '</div>';
-            }
-
-            _flashRow(existingRow);
-        } else {
-            // Row not present (e.g., first page vs paginated) — insert it
-            tbody.insertAdjacentHTML('afterbegin', _buildAmbulanceRow(data));
-            var ins = tbody.querySelector('tr[data-ambulance-id="' + aid + '"]');
-            if (ins) _flashRow(ins);
-            if (window.PGD) PGD.rebuild('amb');
-        }
-        if (typeof showAlert === 'function') showAlert('success', 'Ambulance updated: ' + (data.vehicle_number || ''));
-        return;
-    }
-};

@@ -753,8 +753,6 @@
 
     <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
 
-    <!--  Real-Time Content Updates via Reverb JS -->
-    <script src="{{ asset('assets/user/js/content.js') }}"></script>
     <script src="{{ asset('assets/user/js/autocomplete.js') }}"></script>
 
 @endsection

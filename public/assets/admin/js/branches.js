@@ -90,10 +90,7 @@ function saveBranch() {
                 successMessage: isEdit ? 'Branch updated successfully.' : 'Branch added successfully.',
                 onSuccess: function (resData) {
                     bootstrap.Modal.getInstance(document.getElementById('branchModal'))?.hide();
-                    var branchData = (resData && resData.branch) ? resData.branch : null;
-                    if (branchData && typeof window.admBranchContentUpdated === 'function') {
-                        window.admBranchContentUpdated({ module: 'branch', action: isEdit ? 'updated' : 'added', data: branchData });
-                    }
+                    setTimeout(function () { location.reload(); }, 900);
                 },
                 onError: function () {
                     const btn = document.getElementById('branchSubmitBtn');
@@ -114,9 +111,7 @@ function deleteBranch(id) {
         .then(function (data) {
             if (data.success) {
                 showAlert('success', 'Branch deleted successfully.');
-                if (typeof window.admBranchContentUpdated === 'function') {
-                    window.admBranchContentUpdated({ module: 'branch', action: 'deleted', data: { id: id } });
-                }
+                setTimeout(function () { location.reload(); }, 900);
             } else {
                 showAlert('error', data.message || 'Delete failed.');
             }
@@ -148,35 +143,3 @@ function _buildBranchRow(b) {
         + '<button class="btn-adm-icon btn-adm-icon--danger" title="Delete" onclick="deleteBranch(' + b.id + ')"><i class="fa fa-trash"></i></button>'
         + '</div></td></tr>';
 }
-
-window.admBranchContentUpdated = function (event) {
-    if (!event || event.module !== 'branch') return;
-    var action = event.action;
-    var data   = event.data;
-    var bid    = String(data.id || '');
-    var tbody  = document.getElementById('branchTbody');
-    if (!tbody) return;
-
-    if (action === 'deleted') {
-        var row = tbody.querySelector('tr[data-branch-id="' + bid + '"]');
-        if (row) row.remove();
-        return;
-    }
-
-    if (action === 'added') {
-        if (tbody.querySelector('tr[data-branch-id="' + bid + '"]')) return;
-        var emptyRow = document.getElementById('branchNoResults');
-        if (emptyRow) emptyRow.remove();
-        tbody.insertAdjacentHTML('beforeend', _buildBranchRow(data));
-        return;
-    }
-
-    if (action === 'updated') {
-        var existing = tbody.querySelector('tr[data-branch-id="' + bid + '"]');
-        if (existing) {
-            existing.outerHTML = _buildBranchRow(data);
-        } else {
-            tbody.insertAdjacentHTML('beforeend', _buildBranchRow(data));
-        }
-    }
-};

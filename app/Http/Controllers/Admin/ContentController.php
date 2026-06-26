@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Events\ContentUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Service;
 use App\Models\Admin\Testimonial;
@@ -56,7 +55,6 @@ class ContentController extends Controller
 
             DB::commit();
             logHistory($actor->username, $request->ip(), "Added service: {$item->title}");
-            try { broadcast(new ContentUpdated('service', 'added', $item->toArray(), $actor->username)); } catch (\Throwable $ignored) {}
             return response()->json(['success' => true, 'message' => 'Service added.', 'item' => $item]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -100,7 +98,6 @@ class ContentController extends Controller
 
             DB::commit();
             logHistory($actor->username, $request->ip(), "Updated service: {$item->title}");
-            try { broadcast(new ContentUpdated('service', 'updated', $item->fresh()->toArray(), $actor->username)); } catch (\Throwable $ignored) {}
             return response()->json(['success' => true, 'message' => 'Service updated.', 'item' => $item]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -114,7 +111,6 @@ class ContentController extends Controller
         $actor = Auth::guard('admin')->user();
         logHistory($actor->username, request()->ip(), "Deleted service: {$item->title}");
         $item->delete();
-        try { broadcast(new ContentUpdated('service', 'deleted', ['id' => (int)$id], $actor->username)); } catch (\Throwable $ignored) {}
         return response()->json(['success' => true, 'message' => 'Service deleted.']);
     }
 
@@ -165,7 +161,6 @@ class ContentController extends Controller
 
             DB::commit();
             logHistory($actor->username, $request->ip(), "Added testimonial from: {$item->name}");
-            try { broadcast(new ContentUpdated('testimonial', 'added', $item->toArray(), $actor->username)); } catch (\Throwable $ignored) {}
             return response()->json(['success' => true, 'message' => 'Testimonial added.', 'item' => $item]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -214,7 +209,6 @@ class ContentController extends Controller
 
             DB::commit();
             logHistory($actor->username, $request->ip(), "Updated testimonial from: {$item->name}");
-            try { broadcast(new ContentUpdated('testimonial', 'updated', $item->fresh()->toArray(), $actor->username)); } catch (\Throwable $ignored) {}
             return response()->json(['success' => true, 'message' => 'Testimonial updated.', 'item' => $item]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -228,7 +222,6 @@ class ContentController extends Controller
         $actor = Auth::guard('admin')->user();
         logHistory($actor->username, request()->ip(), "Deleted testimonial: {$item->name}");
         $item->delete();
-        try { broadcast(new ContentUpdated('testimonial', 'deleted', ['id' => (int)$id], $actor->username)); } catch (\Throwable $ignored) {}
         return response()->json(['success' => true, 'message' => 'Testimonial deleted.']);
     }
 
@@ -269,7 +262,6 @@ class ContentController extends Controller
 
             DB::commit();
             logHistory($actor->username, $request->ip(), "Added FAQ: " . substr($item->question, 0, 60));
-            try { broadcast(new ContentUpdated('faq', 'added', $item->toArray(), $actor->username)); } catch (\Throwable $ignored) {}
             return response()->json(['success' => true, 'message' => 'FAQ added.', 'item' => $item]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -308,7 +300,6 @@ class ContentController extends Controller
 
             DB::commit();
             logHistory($actor->username, $request->ip(), "Updated FAQ: " . substr($item->question, 0, 60));
-            try { broadcast(new ContentUpdated('faq', 'updated', $item->fresh()->toArray(), $actor->username)); } catch (\Throwable $ignored) {}
             return response()->json(['success' => true, 'message' => 'FAQ updated.', 'item' => $item]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -322,7 +313,6 @@ class ContentController extends Controller
         $actor = Auth::guard('admin')->user();
         logHistory($actor->username, request()->ip(), 'Deleted FAQ: ' . substr($item->question, 0, 60));
         $item->delete();
-        try { broadcast(new ContentUpdated('faq', 'deleted', ['id' => (int)$id], $actor->username)); } catch (\Throwable $ignored) {}
         return response()->json(['success' => true, 'message' => 'FAQ deleted.']);
     }
 }

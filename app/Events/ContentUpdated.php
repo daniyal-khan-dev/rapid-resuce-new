@@ -15,11 +15,7 @@ class ContentUpdated implements ShouldBroadcastNow
     public array $payload;
 
     private static array $moduleUrls = [
-        'ambulance'  => '/admin/ambulances',
-        'service'    => '/admin/services',
-        'testimonial'=> '/admin/testimonials',
-        'faq'        => '/admin/faqs',
-        'branch'     => '/admin/branch',
+        'driver' => '/admin/drivers',
     ];
 
     public function __construct(string $module, string $action, array $data, string $actor = '')
