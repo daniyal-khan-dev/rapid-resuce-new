@@ -314,10 +314,6 @@ function rcOpenChat(requestId) {
             _rcPendingMessages = [];
             _rcChatLoading     = false;
 
-            // Refresh the notification bell so it reflects the now-read messages.
-            if (window.driNotifBell) window.driNotifBell.onNotifsRead();
-            // Broadcast to other driver tabs (Notification History, etc.) so they
-            // can update their unread styling without requiring a page reload.
             try {
                 var _syncBc = new BroadcastChannel('rr_driver_notif_sync');
                 _syncBc.postMessage({ type: 'notif_read', request_id: requestId });

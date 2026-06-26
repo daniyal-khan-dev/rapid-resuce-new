@@ -8,8 +8,6 @@ use App\Events\UserTyping;
 use App\Http\Controllers\Controller;
 use App\Mail\GuestContactConfirmationMail;
 use App\Models\ContactReply;
-use App\Models\RideChatNotification;
-use App\Models\RideStatusNotification;
 use App\Models\User\ContactMessage;
 use App\Services\RecaptchaService;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class ContactController extends Controller
 {
@@ -123,110 +120,6 @@ class ContactController extends Controller
                 'time'    => $reply->created_at->format('d M Y, h:i A'),
             ],
         ]);
-    }
-
-    public function bellNotifications(): JsonResponse
-    {
-        $userId = Auth::guard('users')->id();
-
-        $replies = ContactReply::with('contactMessage')
-            ->whereHas('contactMessage', fn($q) => $q->where('user_id', $userId))
-            ->where('sender_type', 'admin')
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get()
-            ->map(fn($r) => [
-                'id'                 => $r->id,
-                'type'               => 'reply',
-                'contact_message_id' => $r->contact_message_id,
-                'subject'            => $r->contactMessage?->subject ?? '',
-                'preview'            => Str::limit($r->message, 60),
-                'is_read'            => (bool) $r->is_read,
-                'time'               => $r->created_at->format('d M Y, h:i A'),
-                'date_short'         => $r->created_at->format('d M'),
-                'ts'                 => $r->created_at->timestamp,
-            ]);
-
-        $rideStatuses = RideStatusNotification::where('recipient_type', 'user')
-            ->where('recipient_id', $userId)
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get()
-            ->map(fn($n) => [
-                'id'           => $n->id,
-                'type'         => 'ride_status',
-                'status'       => $n->status,
-                'status_label' => $n->status_label,
-                'rreb_id'      => $n->rreb_id,
-                'driver_name'  => $n->driver_name,
-                'is_read'      => (bool) $n->is_read,
-                'time'         => $n->created_at->format('d M Y, h:i A'),
-                'date_short'   => $n->created_at->format('d M'),
-                'ts'           => $n->created_at->timestamp,
-            ]);
-
-        $rideChatNotifs = RideChatNotification::where('recipient_type', 'user')
-            ->where('recipient_id', $userId)
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get()
-            ->map(fn($n) => [
-                'id'                   => $n->id,
-                'type'                 => 'ride_chat',
-                'sender_name'          => $n->sender_name,
-                'sender_type'          => $n->sender_type,
-                'rreb_id'              => $n->rreb_id,
-                'emergency_request_id' => $n->emergency_request_id,
-                'subject'              => 'Chat: ' . $n->sender_name . ($n->rreb_id ? ' — ' . $n->rreb_id : ''),
-                'preview'              => $n->message_preview,
-                'is_read'              => (bool) $n->is_read,
-                'time'                 => $n->created_at->format('d M Y, h:i A'),
-                'date_short'           => $n->created_at->format('d M'),
-                'ts'                   => $n->created_at->timestamp,
-            ]);
-
-        $all = collect($replies)->merge($rideStatuses)->merge($rideChatNotifs)
-            ->sortByDesc('ts')
-            ->take(10)
-            ->values();
-
-        $unread = $all->filter(fn($n) => !$n['is_read'])->count();
-        return response()->json(['notifications' => $all, 'unread' => $unread]);
-    }
-
-    public function toggleReplyRead(Request $request, $id): JsonResponse
-    {
-        $userId = Auth::guard('users')->id();
-        $reply = ContactReply::whereHas('contactMessage', fn($q) => $q->where('user_id', $userId))
-            ->where('sender_type', 'admin')
-            ->findOrFail($id);
-        $reply->update(['is_read' => !$reply->is_read]);
-        return response()->json(['is_read' => (bool) $reply->is_read]);
-    }
-
-    public function markAllRead(): JsonResponse
-    {
-        $userId = Auth::guard('users')->id();
-        ContactReply::whereHas('contactMessage', fn($q) => $q->where('user_id', $userId))
-            ->where('sender_type', 'admin')
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-        RideStatusNotification::where('recipient_type', 'user')
-            ->where('recipient_id', $userId)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-        return response()->json(['success' => true]);
-    }
-
-    public function toggleRideStatusNotifRead(Request $request, $id): JsonResponse
-    {
-        $userId = Auth::guard('users')->id();
-        $notif = RideStatusNotification::where('id', $id)
-            ->where('recipient_type', 'user')
-            ->where('recipient_id', $userId)
-            ->firstOrFail();
-        $notif->update(['is_read' => !$notif->is_read]);
-        return response()->json(['is_read' => (bool) $notif->is_read]);
     }
 
     public function userTyping(Request $request, $id): JsonResponse

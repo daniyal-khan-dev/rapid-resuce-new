@@ -2,23 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Events\AdminReplyNotification;
 use App\Events\AdminTyping;
 use App\Events\ChatResolved;
 use App\Events\MessageMarkedRead;
 use App\Http\Controllers\Controller;
 use App\Mail\AdminReplyMail;
-use App\Models\Admin\ContentNotification;
-use App\Models\Admin\EmergencyNotification;
 use App\Models\ContactReply;
-use App\Models\RideChatNotification;
-use App\Models\RideStatusNotification;
 use App\Models\User\ContactMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class ContactMessageController extends Controller
 {
@@ -78,12 +72,6 @@ class ContactMessageController extends Controller
             'sender_type'        => 'admin',
             'message'            => $request->message,
         ]);
-
-        if ($msg->user_id) {
-            try {
-                broadcast(new AdminReplyNotification($reply, $msg->user_id));
-            } catch (\Throwable $ignored) {}
-        }
 
         if (!$msg->user_id) {
             try {

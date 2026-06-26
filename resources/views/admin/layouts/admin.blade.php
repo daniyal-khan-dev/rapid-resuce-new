@@ -23,82 +23,6 @@
     {{-- CUSTOM CSS - CDN --}}
     <link rel="stylesheet" href="{{ asset('assets/admin/css/admin.css') }}">
     @stack('styles')
-    <style>
-        /* ── Notification Bell ─────────────────────────────────────────────── */
-        .notif-bell-wrap { position: relative; }
-        .btn-notif-bell {
-            background: transparent; border: none; cursor: pointer; padding: 6px 8px;
-            color: rgba(255,255,255,.70); font-size: 1.05rem; position: relative;
-            display: flex; align-items: center; justify-content: center; border-radius: 8px;
-            transition: color .15s, background .15s;
-        }
-        .btn-notif-bell:hover { color: #fff; background: rgba(255,255,255,.08); }
-        .notif-bell-badge {
-            position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px;
-            border-radius: 8px; background: #ef4444; color: #fff;
-            font-size: .60rem; font-weight: 700; line-height: 1;
-            display: flex; align-items: center; justify-content: center; padding: 0 3px;
-            pointer-events: none; box-shadow: 0 0 0 2px #0e1728;
-        }
-        .notif-bell-dropdown {
-            position: absolute; top: calc(100% + 8px); right: 0;
-            width: 320px; background: #1a2540; border: 1px solid rgba(255,255,255,.10);
-            border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,.45); z-index: 1060;
-            overflow: hidden;
-        }
-        .notif-bell-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.07);
-            font-size: .82rem; font-weight: 600; color: #e2e8f0;
-        }
-        .notif-bell-clear-all {
-            background: transparent; border: none; cursor: pointer; padding: 3px 8px;
-            font-size: .74rem; color: #60a5fa; font-weight: 500; border-radius: 5px;
-            transition: background .15s;
-        }
-        .notif-bell-clear-all:hover { background: rgba(96,165,250,.10); }
-        .notif-bell-list { max-height: 340px; overflow-y: auto; padding: 4px 0; }
-        .notif-bell-list::-webkit-scrollbar { width: 4px; }
-        .notif-bell-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.10); border-radius: 2px; }
-        .notif-bell-empty {
-            display: flex; align-items: center; gap: 8px;
-            padding: 24px 16px; color: rgba(255,255,255,.35); font-size: .82rem;
-            justify-content: center;
-        }
-        .notif-bell-item { list-style: none; cursor: pointer; }
-        .notif-bell-item-inner {
-            display: flex; align-items: flex-start; gap: 10px;
-            padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04);
-            transition: background .15s; position: relative;
-        }
-        .notif-bell-item:hover .notif-bell-item-inner { background: rgba(255,255,255,.05); }
-        .notif-bell-item--unread .notif-bell-item-inner { background: rgba(59,130,246,.06); }
-        .notif-bell-icon {
-            margin-top: 2px; font-size: .88rem; min-width: 22px; text-align: center;
-        }
-        .notif-bell-icon--driver { color: #34d399; }
-        .notif-bell-icon--user   { color: #60a5fa; }
-        .notif-bell-icon--admin  { color: #f59e0b; }
-        .notif-bell-item-body { flex: 1; min-width: 0; }
-        .notif-bell-item-title {
-            font-size: .80rem; font-weight: 600; color: #e2e8f0;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .notif-bell-item-rreb { font-weight: 400; color: rgba(255,255,255,.45); font-size: .75rem; }
-        .notif-bell-item-preview {
-            font-size: .76rem; color: rgba(255,255,255,.55); margin-top: 2px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .notif-bell-item-time { font-size: .70rem; color: rgba(255,255,255,.30); margin-top: 3px; }
-        .notif-bell-footer { border-top: 1px solid rgba(255,255,255,.06); padding: 9px 14px; text-align: center; }
-        .notif-bell-view-all { font-size: .74rem; font-weight: 600; color: #60a5fa; text-decoration: none; }
-        .notif-bell-view-all:hover { text-decoration: underline; }
-        .notif-bell-icon--status { color: #34d399; }
-        .notif-bell-dot {
-            position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
-            width: 7px; height: 7px; border-radius: 50%; background: #3b82f6; flex-shrink: 0;
-        }
-    </style>
 </head>
 
 <body>
@@ -181,10 +105,9 @@
             </a>
 
             @php
-                $admChatNavCount = \App\Models\RideChatNotification::where('recipient_type', 'admin')
-                    ->where('recipient_id', Auth::guard('admin')->user()->id)
-                    ->where('is_read', false)
-                    ->count();
+                $admChatNavCount = \App\Models\RideChatMessage::whereHas(
+                    'emergencyRequest', fn($q) => $q->whereNotNull('id')
+                )->where('is_read_admin', false)->where('sender_type', '!=', 'admin')->count();
             @endphp
             <a href="{{ route('admin.ride-chats.grid') }}"
                 class="sidebar-nav-link {{ request()->routeIs('admin.ride-chats.grid') ? 'active' : '' }}">
@@ -236,11 +159,6 @@
             </a>
 
             <div class="sidebar-section-label">Audit</div>
-            <a href="{{ route('admin.ride-chats.notifHistory') }}"
-                class="sidebar-nav-link {{ request()->routeIs('admin.ride-chats.notifHistory') ? 'active' : '' }}">
-                <i class="fa fa-bell"></i> Notification History
-            </a>
-            
             <a href="{{ route('admin.logs') }}"
                 class="sidebar-nav-link {{ request()->routeIs('admin.logs*') ? 'active' : '' }}">
                 <i class="fa fa-shield-halved"></i> Activity Logs
@@ -280,26 +198,6 @@
             <span class="adm-topbar-title">@yield('page_title', 'Dashboard')</span>
 
             <div class="d-flex align-items-center gap-2">
-                {{-- Notification Bell --}}
-                <div class="notif-bell-wrap" id="admNotifBellWrap">
-                    <button class="btn-notif-bell" id="admNotifBellBtn" title="Chat Notifications" aria-label="Chat Notifications">
-                        <i class="fa fa-bell"></i>
-                        <span class="notif-bell-badge" id="admNotifBellBadge" style="display:none;"></span>
-                    </button>
-                    <div class="notif-bell-dropdown" id="admNotifBellDropdown" style="display:none;">
-                        <div class="notif-bell-header">
-                            <span>Notifications</span>
-                            <button class="notif-bell-clear-all" id="admNotifBellMarkAll">Mark all read</button>
-                        </div>
-                        <ul class="notif-bell-list" id="admNotifBellList">
-                            <li class="notif-bell-empty"><i class="fa fa-bell-slash"></i><span>No notifications</span></li>
-                        </ul>
-                        <div class="notif-bell-footer">
-                            <a href="{{ route('admin.ride-chats.notifHistory') }}" class="notif-bell-view-all">View all notifications</a>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="adm-topbar-avatar"><i class="fa fa-user-shield"></i></div>
                 <div class="d-none d-md-block">
                     <div class="topbar-admin-name">{{ Auth::guard('admin')->user()->name }}</div>
@@ -348,13 +246,6 @@
             checkAdminUsername:   "{{ route('admin.admins.checkUsername') }}",
             checkDriverUsername:  "{{ route('admin.driver.checkUsername') }}",
             rideChatPage:         "{{ route('admin.ride-chats.grid') }}",
-            rideChatNotifBell:    "{{ route('admin.ride-chats.notifBell') }}",
-            rideChatNotifRead:    "{{ url('admin/ride-chats/notif') }}/:id/read",
-            rideChatNotifsRead:   "{{ url('admin/ride-chats') }}/:requestId/notifs-read",
-            rideChatUnreadCount:  "{{ route('admin.ride-chats.unreadCount') }}",
-            statusNotifRead:      "{{ url('admin/ride-chats/status-notif') }}/:id/read",
-            markAllNotifsRead:    "{{ route('admin.ride-chats.markAllNotifsRead') }}",
-            notifHistoryPage:     "{{ route('admin.ride-chats.notifHistory') }}",
         };
 
         @php
@@ -425,9 +316,6 @@
 
     {{-- REAL-TIME EVENT HUB (Reverb/Pusher — routes events to page handlers) --}}
     <script src="{{ asset('assets/admin/js/realtime.js') }}"></script>
-
-    {{-- NOTIFICATION BELL --}}
-    <script src="{{ asset('assets/admin/js/notificaiton.js') }}"></script>
 
     @stack('scripts')
 </body>

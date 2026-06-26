@@ -89,13 +89,6 @@ Route::middleware(['auth:users', 'redirect.auth.admin', 'redirect.auth.driver', 
     });
 
     Route::prefix('ride-chat')->name('ride-chat.')->group(function () {
-        Route::get('/unread-count',               [UserRideChatController::class, 'unreadCount'])->name('unreadCount');
-        Route::get('/notif-bell',                 [UserRideChatController::class, 'rideChatNotifBell'])->name('notifBell');
-        Route::post('/notif/{id}/read',           [UserRideChatController::class, 'markNotifRead'])->name('notifRead');
-        Route::post('/{requestId}/notifs-read',   [UserRideChatController::class, 'markNotifsReadByRequest'])->name('notifsReadByRequest');
-        Route::post('/status-notif/{id}/read',    [UserRideChatController::class, 'markStatusNotifRead'])->name('statusNotifRead');
-        Route::get('/notifications/history',      [UserRideChatController::class, 'notifHistory'])->name('notifHistory');
-        Route::post('/notifications/mark-all-read', [UserRideChatController::class, 'markAllNotifsRead'])->name('markAllNotifsRead');
         Route::get('/{requestId}/thread',         [UserRideChatController::class, 'thread'])->name('thread');
         Route::post('/{requestId}/send',          [UserRideChatController::class, 'send'])->name('send');
         Route::post('/{requestId}/typing',        [UserRideChatController::class, 'typing'])->name('typing');
@@ -155,13 +148,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/{requestId}/thread',             [AdminRideChatController::class, 'thread'])->name('thread');
             Route::post('/{requestId}/send',              [AdminRideChatController::class, 'send'])->name('send');
             Route::post('/{requestId}/typing',            [AdminRideChatController::class, 'typing'])->name('typing');
-            Route::get('/unread-count',                   [AdminRideChatController::class, 'unreadCount'])->name('unreadCount');
-            Route::get('/notif-bell',                     [AdminRideChatController::class, 'rideChatNotifBell'])->name('notifBell');
-            Route::post('/notif/{id}/read',               [AdminRideChatController::class, 'markNotifRead'])->name('notifRead');
-            Route::post('/{requestId}/notifs-read',       [AdminRideChatController::class, 'markNotifsReadByRequest'])->name('notifsReadByRequest');
-            Route::post('/status-notif/{id}/read',        [AdminRideChatController::class, 'markStatusNotifRead'])->name('statusNotifRead');
-            Route::get('/notifications/history',          [AdminRideChatController::class, 'notifHistory'])->name('notifHistory');
-            Route::post('/notifications/mark-all-read',   [AdminRideChatController::class, 'markAllNotifsRead'])->name('markAllNotifsRead');
         });
 
         Route::prefix('contact-messages')->name('contact-messages.')->group(function () {
@@ -243,14 +229,6 @@ Route::prefix('driver')->name('driver.')->group(function () {
         Route::get('/ride-chats/{requestId}/thread',             [DriverChatController::class, 'thread'])->name('ride-chats.thread');
         Route::post('/ride-chats/{requestId}/send',              [DriverChatController::class, 'send'])->name('ride-chats.send');
         Route::post('/ride-chats/{requestId}/typing',            [DriverChatController::class, 'typing'])->name('ride-chats.typing');
-        Route::get('/ride-chats/unread-count',                   [DriverChatController::class, 'unreadCount'])->name('ride-chats.unreadCount');
-        Route::get('/ride-chats/notif-bell',                     [DriverChatController::class, 'rideChatNotifBell'])->name('ride-chats.notifBell');
-        Route::post('/ride-chats/notif/{id}/read',               [DriverChatController::class, 'markNotifRead'])->name('ride-chats.notifRead');
-        Route::post('/ride-chats/{requestId}/notifs-read',       [DriverChatController::class, 'markNotifsReadByRequest'])->name('ride-chats.notifsReadByRequest');
-        Route::post('/ride-chats/assignment-notif/{id}/read',    [DriverChatController::class, 'markAssignmentNotifRead'])->name('ride-chats.assignmentNotifRead');
-        Route::post('/ride-chats/assignment-notif/by-request/{requestId}/read', [DriverChatController::class, 'markAssignmentNotifByRequestRead'])->name('ride-chats.assignmentNotifByRequestRead');
-        Route::get('/ride-chats/notifications/history',          [DriverChatController::class, 'notifHistory'])->name('ride-chats.notifHistory');
-        Route::post('/ride-chats/notifications/mark-all-read',   [DriverChatController::class, 'markAllNotifsRead'])->name('ride-chats.markAllNotifsRead');
 
         Route::post('/heartbeat',  [DriverSessionController::class, 'heartbeat'])->name('heartbeat');
         Route::post('/tab-close',  [DriverSessionController::class, 'tabClose'])->name('tabClose');

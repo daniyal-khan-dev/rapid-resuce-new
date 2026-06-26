@@ -3,19 +3,14 @@
 namespace App\Http\Controllers\Driver;
 
 use App\Events\RideChatMessageSent;
-use App\Events\RideChatNotificationRead;
 use App\Events\RideChatTyping;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Admin;
-use App\Models\Driver\DriverNotification;
 use App\Models\EmergencyRequest;
 use App\Models\RideChatMessage;
-use App\Models\RideChatNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class DriverChatController extends Controller
 {
@@ -23,60 +18,6 @@ class DriverChatController extends Controller
     {
         return Auth::guard('driver')->user();
     }
-
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    private function timeAgo($dt): string
-    {
-        return \Carbon\Carbon::parse($dt)->diffForHumans();
-    }
-
-    private function driverChatMessage(RideChatNotification $n): string
-    {
-        return match ($n->sender_type) {
-            'admin' => 'Admin ' . $n->sender_name . ' sent you a message',
-            'user'  => 'Patient ' . $n->sender_name . ' sent you a message',
-            default => 'New message from ' . $n->sender_name,
-        };
-    }
-
-    private function formatDriverChatNotif(RideChatNotification $n): array
-    {
-        return [
-            'id'                   => 'chat_' . $n->id,
-            'source'               => 'chat',
-            'source_id'            => $n->id,
-            'message'              => $this->driverChatMessage($n),
-            'preview'              => $n->message_preview,
-            'rreb_id'              => $n->rreb_id,
-            'emergency_request_id' => $n->emergency_request_id,
-            'action_url'           => '/driver/ride-chats?open=' . $n->emergency_request_id,
-            'is_read'              => (bool) $n->is_read,
-            'time_ago'             => $this->timeAgo($n->created_at),
-            'time'                 => $n->created_at->format('d M Y, h:i A'),
-            'ts'                   => $n->created_at->timestamp,
-        ];
-    }
-
-    private function formatDriverAssignmentNotif(DriverNotification $n): array
-    {
-        return [
-            'id'                   => 'assignment_' . $n->id,
-            'source'               => 'assignment',
-            'source_id'            => $n->id,
-            'message'              => $n->title ?: 'New dispatch request',
-            'preview'              => $n->body,
-            'rreb_id'              => null,
-            'emergency_request_id' => $n->emergency_request_id,
-            'action_url'           => '/driver/requests',
-            'is_read'              => (bool) $n->is_read,
-            'time_ago'             => $this->timeAgo($n->created_at),
-            'time'                 => $n->created_at->format('d M Y, h:i A'),
-            'ts'                   => $n->created_at->timestamp,
-        ];
-    }
-
-    // ── Existing methods ──────────────────────────────────────────────────────
 
     public function index()
     {
@@ -129,32 +70,13 @@ class DriverChatController extends Controller
             ->where('sender_type', '!=', 'driver')
             ->update(['is_read_driver' => true]);
 
-        $notifsCleared = RideChatNotification::where('emergency_request_id', $requestId)
-            ->where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->where('is_read', false)
-            ->count();
-
-        if ($notifsCleared > 0) {
-            RideChatNotification::where('emergency_request_id', $requestId)
-                ->where('recipient_type', 'driver')
-                ->where('recipient_id', $driver->id)
-                ->where('is_read', false)
-                ->update(['is_read' => true]);
-
-            try {
-                broadcast(new RideChatNotificationRead('driver', $driver->id, $req->id, $req->rreb_id ?? '#' . $req->id));
-            } catch (\Throwable $ignored) {}
-        }
-
         return response()->json([
-            'messages'                 => $messages,
-            'status'                   => $req->status,
-            'chat_status'              => RideChatMessage::chatStatus($req->status),
-            'rreb_id'                  => $req->rreb_id ?? '#' . $req->id,
-            'request_id'               => $req->id,
-            'user_id'                  => $req->user_id,
-            'ride_chat_notifs_cleared' => $notifsCleared,
+            'messages'    => $messages,
+            'status'      => $req->status,
+            'chat_status' => RideChatMessage::chatStatus($req->status),
+            'rreb_id'     => $req->rreb_id ?? '#' . $req->id,
+            'request_id'  => $req->id,
+            'user_id'     => $req->user_id,
         ]);
     }
 
@@ -182,43 +104,8 @@ class DriverChatController extends Controller
             'is_read_user'         => false,
         ]);
 
-        $preview      = Str::limit($request->message, 100);
-        $adminNotifId = null;
-        $userNotifId  = null;
-
-        $allAdmins = Admin::pluck('id');
-        foreach ($allAdmins as $adminId) {
-            $an = RideChatNotification::create([
-                'emergency_request_id' => $req->id,
-                'ride_chat_message_id' => $msg->id,
-                'rreb_id'              => $req->rreb_id,
-                'recipient_type'       => 'admin',
-                'recipient_id'         => $adminId,
-                'sender_name'          => $driver->name,
-                'sender_type'          => 'driver',
-                'message_preview'      => $preview,
-                'is_read'              => false,
-            ]);
-            if (!$adminNotifId) $adminNotifId = $an->id;
-        }
-
-        if ($req->user_id) {
-            $un = RideChatNotification::create([
-                'emergency_request_id' => $req->id,
-                'ride_chat_message_id' => $msg->id,
-                'rreb_id'              => $req->rreb_id,
-                'recipient_type'       => 'user',
-                'recipient_id'         => $req->user_id,
-                'sender_name'          => $driver->name,
-                'sender_type'          => 'driver',
-                'message_preview'      => $preview,
-                'is_read'              => false,
-            ]);
-            $userNotifId = $un->id;
-        }
-
         try {
-            broadcast(new RideChatMessageSent($msg, $req, $driver->id, $req->user_id, $adminNotifId, null, $userNotifId));
+            broadcast(new RideChatMessageSent($msg, $req, $driver->id, $req->user_id));
         } catch (\Throwable $ignored) {}
 
         return response()->json([
@@ -245,184 +132,5 @@ class DriverChatController extends Controller
         } catch (\Throwable $ignored) {}
 
         return response()->json(['ok' => true]);
-    }
-
-    public function unreadCount(): JsonResponse
-    {
-        $driver     = $this->driver();
-        $chatUnread = RideChatNotification::where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->where('is_read', false)
-            ->count();
-        $assignUnread = DriverNotification::where('driver_id', $driver->id)->where('is_read', false)->count();
-
-        return response()->json(['unread' => $chatUnread + $assignUnread]);
-    }
-
-    // ── Notification bell (last 10, combined chat + assignments) ─────────────
-    public function rideChatNotifBell(): JsonResponse
-    {
-        $driver = $this->driver();
-
-        $chatNotifs = RideChatNotification::where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get()
-            ->map(fn($n) => $this->formatDriverChatNotif($n));
-
-        $assignNotifs = DriverNotification::where('driver_id', $driver->id)
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get()
-            ->map(fn($n) => $this->formatDriverAssignmentNotif($n));
-
-        $combined = $chatNotifs->concat($assignNotifs)
-            ->sortByDesc('ts')
-            ->values()
-            ->take(10);
-
-        $chatUnread   = RideChatNotification::where('recipient_type', 'driver')->where('recipient_id', $driver->id)->where('is_read', false)->count();
-        $assignUnread = DriverNotification::where('driver_id', $driver->id)->where('is_read', false)->count();
-
-        return response()->json([
-            'notifications' => $combined,
-            'unread'        => $chatUnread + $assignUnread,
-        ]);
-    }
-
-    // ── Mark single chat notification read ────────────────────────────────────
-    public function markNotifRead(Request $request, $id): JsonResponse
-    {
-        $driver = $this->driver();
-        $notif  = RideChatNotification::where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->findOrFail($id);
-
-        if (!$notif->is_read) {
-            $notif->update(['is_read' => true]);
-        }
-
-        return response()->json(['is_read' => true]);
-    }
-
-    // ── Mark all unread assignment notifications for a given request read ────
-    // Called when the driver is already viewing the requests page and a new
-    // dispatch notification arrives — auto-marks without the driver needing to
-    // open the notification bell.
-    public function markAssignmentNotifByRequestRead(Request $request, $requestId): JsonResponse
-    {
-        $driver = $this->driver();
-
-        $count = DriverNotification::where('driver_id', $driver->id)
-            ->where('emergency_request_id', $requestId)
-            ->where('is_read', false)
-            ->count();
-
-        if ($count > 0) {
-            DriverNotification::where('driver_id', $driver->id)
-                ->where('emergency_request_id', $requestId)
-                ->where('is_read', false)
-                ->update(['is_read' => true]);
-        }
-
-        return response()->json(['success' => true, 'marked' => $count]);
-    }
-
-    // ── Mark single driver/assignment notification read ───────────────────────
-    public function markAssignmentNotifRead(Request $request, $id): JsonResponse
-    {
-        $driver = $this->driver();
-        $notif  = DriverNotification::where('driver_id', $driver->id)->findOrFail($id);
-        if (!$notif->is_read) {
-            $notif->update(['is_read' => true]);
-        }
-        return response()->json(['is_read' => true]);
-    }
-
-    // ── Mark all chat notifs for a ride read ──────────────────────────────────
-    public function markNotifsReadByRequest(Request $request, $requestId): JsonResponse
-    {
-        $driver = $this->driver();
-        $req    = EmergencyRequest::findOrFail($requestId);
-
-        $count = RideChatNotification::where('emergency_request_id', $requestId)
-            ->where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->where('is_read', false)
-            ->count();
-
-        if ($count > 0) {
-            RideChatNotification::where('emergency_request_id', $requestId)
-                ->where('recipient_type', 'driver')
-                ->where('recipient_id', $driver->id)
-                ->where('is_read', false)
-                ->update(['is_read' => true]);
-
-            try {
-                broadcast(new RideChatNotificationRead('driver', $driver->id, $req->id, $req->rreb_id ?? '#' . $req->id));
-            } catch (\Throwable $ignored) {}
-        }
-
-        return response()->json(['cleared' => $count]);
-    }
-
-    // ── Mark ALL notifications read for this driver ───────────────────────────
-    public function markAllNotifsRead(): JsonResponse
-    {
-        $driver = $this->driver();
-
-        RideChatNotification::where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        DriverNotification::where('driver_id', $driver->id)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        return response()->json(['success' => true]);
-    }
-
-    // ── Notification history page ─────────────────────────────────────────────
-    public function notifHistory()
-    {
-        $driver = $this->driver();
-
-        $chatNotifs = RideChatNotification::where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn($n) => $this->formatDriverChatNotif($n));
-
-        $assignNotifs = DriverNotification::where('driver_id', $driver->id)
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn($n) => $this->formatDriverAssignmentNotif($n));
-
-        $allNotifs = $chatNotifs->concat($assignNotifs)
-            ->sortByDesc('ts')
-            ->values();
-
-        if (request()->ajax()) {
-            return response()->json(['notifications' => $allNotifs->take(50)->values()]);
-        }
-
-        $perPage   = 20;
-        $page      = max(1, (int) request()->get('page', 1));
-        $total     = $allNotifs->count();
-        $items     = $allNotifs->slice(($page - 1) * $perPage, $perPage)->values();
-
-        $paginator = new LengthAwarePaginator($items, $total, $perPage, $page, [
-            'path' => request()->url(),
-        ]);
-
-        $chatUnread   = RideChatNotification::where('recipient_type', 'driver')->where('recipient_id', $driver->id)->where('is_read', false)->count();
-        $assignUnread = DriverNotification::where('driver_id', $driver->id)->where('is_read', false)->count();
-
-        return view('driver.pages.notif_history', [
-            'notifications' => $paginator,
-            'unread'        => $chatUnread + $assignUnread,
-        ]);
     }
 }

@@ -11,17 +11,13 @@ use App\Http\Controllers\Controller;
 use App\Mail\RideCompletionMail;
 use App\Models\Admin\Ambulance;
 use App\Models\Driver\Driver;
-use App\Models\Driver\DriverNotification;
 use App\Models\EmergencyRequest;
-use App\Models\RideChatNotification;
-use App\Models\RideStatusNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 
 class DriverRequestController extends Controller
@@ -74,27 +70,6 @@ class DriverRequestController extends Controller
             $req->dispatched_at = now();
             $req->save();
 
-            $userRideNotifId = null;
-            if ($req->user_id) {
-                $uNotif = RideStatusNotification::create([
-                    'emergency_request_id' => $req->id,
-                    'rreb_id'              => $req->rreb_id,
-                    'status'               => '2',
-                    'status_label'         => 'Dispatched',
-                    'driver_name'          => $driver->name,
-                    'recipient_type'       => 'user',
-                    'recipient_id'         => $req->user_id,
-                    'is_read'              => false,
-                ]);
-                $userRideNotifId = $uNotif->id;
-            }
-
-            DriverNotification::where('driver_id', $driver->id)
-                ->where('emergency_request_id', $req->id)
-                ->latest()
-                ->first()
-                ?->update(['is_read' => true]);
-
             DB::commit();
 
             $loaded = $req->load(['ambulance', 'driver']);
@@ -104,7 +79,7 @@ class DriverRequestController extends Controller
             } catch (\Throwable $ignored) {}
 
             try {
-                broadcast(new RequestStatusUpdated($loaded, $driver->name, $driver->lat, $driver->lng, null, $userRideNotifId));
+                broadcast(new RequestStatusUpdated($loaded, $driver->name, $driver->lat, $driver->lng));
             } catch (\Throwable $ignored) {}
 
             return response()->json([
@@ -151,26 +126,8 @@ class DriverRequestController extends Controller
 
             $fresh = $req->fresh();
 
-            // Notify admin in real time that the driver rejected the dispatch.
-            // Without this record the bell endpoint returns the same unread count
-            // and the optimistic +1 in admNotifBell.onNewStatusNotif() reverts.
-            $adminNotifId = null;
             try {
-                $aN = RideStatusNotification::create([
-                    'emergency_request_id' => $req->id,
-                    'rreb_id'              => $req->rreb_id,
-                    'status'               => '1',
-                    'status_label'         => 'Rejected',
-                    'driver_name'          => $driver->name,
-                    'recipient_type'       => 'admin',
-                    'recipient_id'         => null,
-                    'is_read'              => false,
-                ]);
-                $adminNotifId = $aN->id;
-            } catch (\Throwable $ignored) {}
-
-            try {
-                broadcast(new RequestStatusUpdated($fresh, $driver->name, null, null, $adminNotifId));
+                broadcast(new RequestStatusUpdated($fresh, $driver->name, null, null));
             } catch (\Throwable $ignored) {}
 
             try {
@@ -253,37 +210,6 @@ class DriverRequestController extends Controller
 
             $req->save();
 
-            $adminNotifId = null;
-            $userNotifId  = null;
-
-            if ($req->user_id && in_array($newStatus, ['3', '4', '5', '6'])) {
-                $uNotif = RideStatusNotification::create([
-                    'emergency_request_id' => $req->id,
-                    'rreb_id'              => $req->rreb_id,
-                    'status'               => $newStatus,
-                    'status_label'         => self::$statusLabels[$newStatus] ?? $newStatus,
-                    'driver_name'          => $driver->name,
-                    'recipient_type'       => 'user',
-                    'recipient_id'         => $req->user_id,
-                    'is_read'              => false,
-                ]);
-                $userNotifId = $uNotif->id;
-            }
-
-            if (in_array($newStatus, ['3', '6', '7'])) {
-                $aNotif = RideStatusNotification::create([
-                    'emergency_request_id' => $req->id,
-                    'rreb_id'              => $req->rreb_id,
-                    'status'               => $newStatus,
-                    'status_label'         => self::$statusLabels[$newStatus] ?? $newStatus,
-                    'driver_name'          => $driver->name,
-                    'recipient_type'       => 'admin',
-                    'recipient_id'         => null,
-                    'is_read'              => false,
-                ]);
-                $adminNotifId = $aNotif->id;
-            }
-
             DB::commit();
 
             if ($newStatus === '6') {
@@ -299,9 +225,8 @@ class DriverRequestController extends Controller
                 }
             }
 
-
             try {
-                broadcast(new RequestStatusUpdated($req, $driver->name, $driver->lat, $driver->lng, $adminNotifId, $userNotifId));
+                broadcast(new RequestStatusUpdated($req, $driver->name, $driver->lat, $driver->lng));
             } catch (\Throwable $ignored) {}
 
             if ($freedDriverId) {
@@ -358,181 +283,6 @@ class DriverRequestController extends Controller
         ]);
     }
 
-    public function bellNotifications(): JsonResponse
-    {
-        $driver = $this->driver();
-
-        $notifs = DriverNotification::where('driver_id', $driver->id)
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get()
-            ->map(fn($n) => [
-                'id'                   => $n->id,
-                'type'                 => $n->type,
-                'title'                => $n->title,
-                'body'                 => $n->body,
-                'emergency_request_id' => $n->emergency_request_id,
-                'is_read'              => (bool) $n->is_read,
-                'time'                 => $n->created_at->format('d M Y, h:i A'),
-                'date_short'           => $n->created_at->format('d M'),
-                'ts'                   => $n->created_at->timestamp,
-            ]);
-
-        $rideChatNotifs = RideChatNotification::where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get()
-            ->map(fn($n) => [
-                'id'                   => $n->id,
-                'type'                 => 'ride_chat',
-                'title'                => 'Chat: ' . $n->sender_name . ($n->rreb_id ? ' — ' . $n->rreb_id : ''),
-                'body'                 => $n->message_preview,
-                'emergency_request_id' => $n->emergency_request_id,
-                'rreb_id'              => $n->rreb_id,
-                'sender_name'          => $n->sender_name,
-                'sender_type'          => $n->sender_type,
-                'preview'              => $n->message_preview,
-                'is_read'              => (bool) $n->is_read,
-                'time'                 => $n->created_at->format('d M Y, h:i A'),
-                'date_short'           => $n->created_at->format('d M'),
-                'ts'                   => $n->created_at->timestamp,
-            ]);
-
-        $combined = $notifs->merge($rideChatNotifs)->sortByDesc('ts')->take(10)->values();
-
-        $unread = DriverNotification::where('driver_id', $driver->id)
-            ->where('is_read', false)
-            ->count()
-            + RideChatNotification::where('recipient_type', 'driver')
-                ->where('recipient_id', $driver->id)
-                ->where('is_read', false)
-                ->count();
-
-        return response()->json(['notifications' => $combined, 'unread' => $unread]);
-    }
-
-    public function notificationsData(): JsonResponse
-    {
-        $driver = $this->driver();
-
-        $driverNotifs = DriverNotification::where('driver_id', $driver->id)
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn($n) => [
-                'id'                   => $n->id,
-                'source'               => 'driver_notif',
-                'type'                 => $n->type,
-                'title'                => $n->title,
-                'body'                 => $n->body,
-                'preview'              => Str::limit($n->body ?? '', 80),
-                'emergency_request_id' => $n->emergency_request_id,
-                'read'                 => (bool) $n->is_read,
-                'time'                 => $n->created_at->format('d M Y, h:i A'),
-                'date_short'           => $n->created_at->format('d M'),
-                'ts'                   => $n->created_at->timestamp,
-            ]);
-
-        $rideChatNotifs = RideChatNotification::where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn($n) => [
-                'id'                   => $n->id,
-                'source'               => 'ride_chat',
-                'type'                 => 'ride_chat',
-                'title'                => 'Chat: ' . $n->sender_name . ($n->rreb_id ? ' — ' . $n->rreb_id : ''),
-                'body'                 => $n->message_preview,
-                'preview'              => Str::limit($n->message_preview ?? '', 80),
-                'emergency_request_id' => $n->emergency_request_id,
-                'read'                 => (bool) $n->is_read,
-                'time'                 => $n->created_at->format('d M Y, h:i A'),
-                'date_short'           => $n->created_at->format('d M'),
-                'ts'                   => $n->created_at->timestamp,
-            ]);
-
-        $combined = $driverNotifs->merge($rideChatNotifs)->sortByDesc('ts')->values();
-
-        $stats = [
-            'total'      => $combined->count(),
-            'assignment' => $driverNotifs->where('type', 'assignment')->count(),
-            'cancelled'  => $driverNotifs->where('type', 'cancelled')->count(),
-            'ride_chat'  => $rideChatNotifs->count(),
-            'unread'     => $combined->where('read', false)->count(),
-        ];
-
-        return response()->json(['notifications' => $combined, 'stats' => $stats]);
-    }
-
-    public function markAllRead(): JsonResponse
-    {
-        $driver = $this->driver();
-        DriverNotification::where('driver_id', $driver->id)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        RideChatNotification::where('recipient_type', 'driver')
-            ->where('recipient_id', $driver->id)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        return response()->json(['success' => true]);
-    }
-
-    public function markAsRead(Request $request, $id): JsonResponse
-    {
-        $driver = $this->driver();
-        $notif  = DriverNotification::where('driver_id', $driver->id)->findOrFail($id);
-
-        if (!$notif->is_read) {
-            $notif->update(['is_read' => true]);
-
-            try {
-                broadcast(new \App\Events\DriverNotificationRead(
-                    $driver->id,
-                    $notif->id,
-                    $notif->emergency_request_id
-                ));
-            } catch (\Throwable $ignored) {}
-        }
-
-        return response()->json([
-            'is_read'              => true,
-            'notif_id'             => $notif->id,
-            'emergency_request_id' => $notif->emergency_request_id,
-        ]);
-    }
-
-    public function markReadByRequest(Request $request, $requestId): JsonResponse
-    {
-        $driver = $this->driver();
-
-        $notif = DriverNotification::where('driver_id', $driver->id)
-            ->where('emergency_request_id', $requestId)
-            ->where('is_read', false)
-            ->first();
-
-        if (!$notif) {
-            return response()->json(['success' => true, 'already_read' => true]);
-        }
-
-        $notif->update(['is_read' => true]);
-
-        try {
-            broadcast(new \App\Events\DriverNotificationRead(
-                $driver->id,
-                $notif->id,
-                $notif->emergency_request_id
-            ));
-        } catch (\Throwable $ignored) {}
-
-        return response()->json([
-            'success'              => true,
-            'notif_id'             => $notif->id,
-            'emergency_request_id' => $notif->emergency_request_id,
-        ]);
-    }
-
     public function stats(): JsonResponse
     {
         $driver = $this->driver();
@@ -577,7 +327,7 @@ class DriverRequestController extends Controller
     private function allowedTransitions(string $current): array
     {
         return match ($current) {
-            '2'     => ['3'],        // Dispatched → En Route only; cancel not allowed after acceptance
+            '2'     => ['3'],
             '3'     => ['4'],
             '4'     => ['5'],
             '5'     => ['6'],
@@ -594,20 +344,19 @@ class DriverRequestController extends Controller
             'type_label'     => $req->type === '1' ? 'Emergency' : 'Non-Emergency',
             'status'         => $req->status,
             'status_label'   => self::$statusLabels[$req->status] ?? $req->status,
-            'mobile_no'      => $req->mobile_no,
             'pickup_address' => $req->pickup_address,
-            'pickup_lat'     => $req->pickup_lat,
-            'pickup_lng'     => $req->pickup_lng,
+            'pickup_lat'     => $req->pickup_lat  ? (float) $req->pickup_lat  : null,
+            'pickup_lng'     => $req->pickup_lng  ? (float) $req->pickup_lng  : null,
             'hospital_name'  => $req->hospital_name,
-            'hospital_lat'   => $req->hospital_lat,
-            'hospital_lng'   => $req->hospital_lng,
-            'accepted_lat'   => $req->accepted_lat ? (float) $req->accepted_lat : null,
-            'accepted_lng'   => $req->accepted_lng ? (float) $req->accepted_lng : null,
+            'hospital_lat'   => $req->hospital_lat ? (float) $req->hospital_lat : null,
+            'hospital_lng'   => $req->hospital_lng ? (float) $req->hospital_lng : null,
+            'mobile_no'      => $req->mobile_no,
             'notes'          => $req->notes,
+            'ambulance_no'   => $req->ambulance?->vehicle_number ?? null,
+            'ambulance_type' => $req->ambulance?->type ?? null,
             'dispatched_at'  => $req->dispatched_at?->format('d M Y, h:i A'),
-            'ambulance_no'   => $req->ambulance?->vehicle_number ?? '—',
-            'ambulance_type' => $req->ambulance?->type ?? '—',
-            'allowed_next'   => $this->allowedTransitions($req->status),
+            'completed_at'   => $req->completed_at?->format('d M Y, h:i A'),
+            'created_at'     => $req->created_at?->format('d M Y, h:i A'),
         ];
     }
 }

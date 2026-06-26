@@ -4,7 +4,6 @@ namespace App\Http\Controllers\User;
 
 use App\Events\EmergencyRequestSubmitted;
 use App\Http\Controllers\Controller;
-use App\Models\Admin\EmergencyNotification;
 use App\Mail\EmergencyRequestConfirmationMail;
 use App\Models\EmergencyRequest;
 use Illuminate\Http\JsonResponse;
@@ -58,19 +57,10 @@ class EmergencyRequestController extends Controller
                 'status'         => '1',
             ]);
 
-            $notif = EmergencyNotification::create([
-                'emergency_request_id' => $req->id,
-                'rreb_id'              => $req->rreb_id,
-                'mobile_no'            => $req->mobile_no,
-                'pickup_address'       => $req->pickup_address,
-                'type'                 => $req->type,
-                'is_read'              => false,
-            ]);
-
             DB::commit();
 
             try {
-                broadcast(new EmergencyRequestSubmitted($req, $notif->id));
+                broadcast(new EmergencyRequestSubmitted($req));
             } catch (\Throwable $ignored) {}
 
             try {
@@ -93,6 +83,4 @@ class EmergencyRequestController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-
-    
 }

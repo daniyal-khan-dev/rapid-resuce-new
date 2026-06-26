@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use App\Models\Admin\ContentNotification;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -23,18 +22,9 @@ class ContentUpdated implements ShouldBroadcastNow
         'branch'     => '/admin/branch',
     ];
 
-    private static array $moduleLabels = [
-        'ambulance'  => 'Ambulance',
-        'service'    => 'Service',
-        'testimonial'=> 'Testimonial',
-        'faq'        => 'FAQ',
-        'branch'     => 'Branch',
-    ];
-
     public function __construct(string $module, string $action, array $data, string $actor = '')
     {
-        $moduleLabel = self::$moduleLabels[$module] ?? ucfirst($module);
-        $moduleUrl   = self::$moduleUrls[$module]   ?? '/admin/dashboard';
+        $moduleUrl = self::$moduleUrls[$module] ?? '/admin/dashboard';
 
         $this->payload = [
             'module'     => $module,
@@ -46,19 +36,6 @@ class ContentUpdated implements ShouldBroadcastNow
             'date_short' => now()->format('d M'),
             'nonce'      => bin2hex(random_bytes(8)),
         ];
-
-        try {
-            ContentNotification::create([
-                'module'     => $module,
-                'action'     => $action,
-                'subject'    => $moduleLabel . ' ' . $action,
-                'preview'    => 'By ' . ($actor ?: 'admin'),
-                'module_url' => $moduleUrl,
-                'actor'      => $actor,
-                'is_read'    => false,
-                'data'       => $data,
-            ]);
-        } catch (\Throwable $ignored) {}
     }
 
     public function broadcastOn(): array

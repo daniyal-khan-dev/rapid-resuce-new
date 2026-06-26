@@ -9,7 +9,6 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 
 class RequestStatusUpdated implements ShouldBroadcastNow
 {
@@ -23,9 +22,7 @@ class RequestStatusUpdated implements ShouldBroadcastNow
         EmergencyRequest $req,
         string $driverName,
         ?float $driverLat = null,
-        ?float $driverLng = null,
-        ?int   $adminNotifId = null,
-        ?int   $userNotifId  = null
+        ?float $driverLng = null
     ) {
         $statusLabels = [
             '1' => 'Pending',    '2' => 'Dispatched',   '3' => 'En Route',
@@ -46,8 +43,6 @@ class RequestStatusUpdated implements ShouldBroadcastNow
             'driver_lat'     => $driverLat,
             'driver_lng'     => $driverLng,
             'user_id'        => $this->userId,
-            'admin_notif_id' => $adminNotifId,
-            'user_notif_id'  => $userNotifId,
             'time'           => now()->format('d M Y, h:i A'),
             'date_short'     => now()->format('d M'),
             'type'           => $req->type,
@@ -60,7 +55,6 @@ class RequestStatusUpdated implements ShouldBroadcastNow
             'created_at'     => $req->created_at->format('d M Y, h:i A'),
             'notes'          => $req->notes,
             'badge_count'    => EmergencyRequest::whereNotIn('status', ['6', '7'])->count(),
-            /* Ride coordinates for admin live monitoring route rendering */
             'pickup_lat'     => $req->pickup_lat   ? (float) $req->pickup_lat   : null,
             'pickup_lng'     => $req->pickup_lng   ? (float) $req->pickup_lng   : null,
             'hospital_lat'   => $req->hospital_lat ? (float) $req->hospital_lat : null,

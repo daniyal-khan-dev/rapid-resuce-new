@@ -8,7 +8,6 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 
 class EmergencyRequestSubmitted implements ShouldBroadcastNow
 {
@@ -16,12 +15,11 @@ class EmergencyRequestSubmitted implements ShouldBroadcastNow
 
     public array $payload;
 
-    public function __construct(EmergencyRequest $req, int $notifId)
+    public function __construct(EmergencyRequest $req)
     {
         $typeLabel = $req->type === '1' ? 'Emergency' : 'Non-Emergency';
 
         $this->payload = [
-            'notif_id'           => $notifId,
             'emergency_id'       => $req->id,
             'request_id'         => $req->id,
             'rreb_id'            => $req->rreb_id,
@@ -42,7 +40,6 @@ class EmergencyRequestSubmitted implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        // Broadcast on admin channel AND public pool channel for nearby driver discovery
         return [
             new Channel('contact.admin'),
             new Channel('emergency.pool'),

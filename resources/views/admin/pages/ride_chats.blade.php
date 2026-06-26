@@ -459,10 +459,6 @@ function rcOpenChat(requestId) {
             if (typeof window.admRideChatNotifsCleared === 'function' && data.ride_chat_notifs_cleared) {
                 window.admRideChatNotifsCleared(data.ride_chat_notifs_cleared, requestId);
             }
-            // Refresh the notification bell so it reflects the now-read messages.
-            if (window.admNotifBell) window.admNotifBell.onNotifsRead();
-            // Broadcast to other admin tabs (Notification History, etc.) so they
-            // can update their unread styling without requiring a page reload.
             try {
                 var _syncBc = new BroadcastChannel('rr_admin_notif_sync');
                 _syncBc.postMessage({ type: 'notif_read', request_id: requestId });

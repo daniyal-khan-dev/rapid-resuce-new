@@ -20,9 +20,6 @@ class RideChatMessageSent implements ShouldBroadcast
         public EmergencyRequest $request,
         public ?int             $driverId,
         public ?int             $userId,
-        public ?int             $adminNotifId  = null,
-        public ?int             $driverNotifId = null,
-        public ?int             $userNotifId   = null,
     ) {}
 
     public function broadcastOn(): array
@@ -48,27 +45,21 @@ class RideChatMessageSent implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'message_id'      => $this->chatMsg->id,
-            'request_id'      => $this->request->id,
-            'rreb_id'         => $this->request->rreb_id,
-            // Ride metadata — needed so the frontend can insert a new list item
-            // for the very first message without requiring a page reload.
-            'status'          => $this->request->status,
-            'pickup_address'  => $this->request->pickup_address,
-            'driver_name'     => $this->request->driver?->name ?? '—',
-            'chat_status'     => \App\Models\RideChatMessage::chatStatus($this->request->status),
-            // Message fields
-            'sender_type'     => $this->chatMsg->sender_type,
-            'sender_id'       => $this->chatMsg->sender_id,
-            'sender_name'     => $this->chatMsg->sender_name,
-            'message'         => $this->chatMsg->message,
-            'time'            => $this->chatMsg->created_at->format('d M Y, h:i A'),
-            'date_short'      => $this->chatMsg->created_at->format('d M'),
-            'driver_id'       => $this->driverId,
-            'user_id'         => $this->userId,
-            'admin_notif_id'  => $this->adminNotifId,
-            'driver_notif_id' => $this->driverNotifId,
-            'user_notif_id'   => $this->userNotifId,
+            'message_id'     => $this->chatMsg->id,
+            'request_id'     => $this->request->id,
+            'rreb_id'        => $this->request->rreb_id,
+            'status'         => $this->request->status,
+            'pickup_address' => $this->request->pickup_address,
+            'driver_name'    => $this->request->driver?->name ?? '—',
+            'chat_status'    => \App\Models\RideChatMessage::chatStatus($this->request->status),
+            'sender_type'    => $this->chatMsg->sender_type,
+            'sender_id'      => $this->chatMsg->sender_id,
+            'sender_name'    => $this->chatMsg->sender_name,
+            'message'        => $this->chatMsg->message,
+            'time'           => $this->chatMsg->created_at->format('d M Y, h:i A'),
+            'date_short'     => $this->chatMsg->created_at->format('d M'),
+            'driver_id'      => $this->driverId,
+            'user_id'        => $this->userId,
         ];
     }
 }

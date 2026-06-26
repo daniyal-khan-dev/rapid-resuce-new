@@ -9,7 +9,6 @@ use App\Events\EmergencyStatusUpdated;
 use App\Events\PendingRideTaken;
 use App\Events\RequestStatusUpdated;
 use App\Http\Controllers\Controller;
-use App\Models\Driver\DriverNotification;
 use App\Models\Admin\Ambulance;
 use App\Models\Driver\Driver;
 use App\Models\EmergencyRequest;
@@ -140,15 +139,6 @@ class EmergencyController extends Controller
 
             $admin = Auth::guard('admin')->user();
             logHistory($admin->username, $request->ip(), "Sent dispatch request for request #{$req->id} — ambulance ID: {$request->ambulance_id}, driver ID: {$request->driver_id}");
-
-            DriverNotification::create([
-                'driver_id'            => $request->driver_id,
-                'emergency_request_id' => $req->id,
-                'type'                 => 'assignment',
-                'title'                => 'New Dispatch Request',
-                'body'                 => ($req->type === '1' ? 'Emergency' : 'Non-Emergency') . ' request ' . $req->rreb_id . ' — please Accept or Reject.',
-                'is_read'              => false,
-            ]);
 
             DB::commit();
 

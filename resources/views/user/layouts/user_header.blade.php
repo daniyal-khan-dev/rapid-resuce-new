@@ -27,43 +27,6 @@
 
     <!-- PAGE-SPECIFIC STYLES -->
     @stack('styles')
-
-    @auth('users')
-    <style>
-    /* ── User Notification Bell ─────────────────────────────────────────────── */
-    .rr-notif-bell-wrap { position:relative; display:inline-flex; align-items:center; }
-    .rr-notif-bell-btn { position:relative; background:none; border:none; cursor:pointer; width:38px; height:38px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; color:#374151; transition:background .15s; padding:0; }
-    .rr-notif-bell-btn:hover { background:#f3f4f6; }
-    .rr-notif-bell-btn .fa-bell { font-size:1rem; }
-    .rr-notif-bell-badge { position:absolute; top:3px; right:3px; min-width:16px; height:16px; border-radius:8px; background:var(--rr-primary,#D72C42); color:#fff; font-size:.62rem; font-weight:700; display:flex; align-items:center; justify-content:center; padding:0 4px; line-height:1; pointer-events:none; }
-    .rr-notif-bell-dropdown { position:absolute; top:calc(100% + 8px); right:0; width:340px; background:#fff; border-radius:14px; box-shadow:0 8px 32px rgba(0,0,0,.14); z-index:1080; overflow:hidden; border:1px solid rgba(0,0,0,.06); }
-    .rr-notif-bell-header { display:flex; align-items:center; justify-content:space-between; padding:13px 16px 11px; border-bottom:1px solid #f3f4f6; }
-    .rr-notif-bell-header > span { font-size:.88rem; font-weight:700; color:#111; }
-    .rr-notif-bell-clear { background:none; border:none; cursor:pointer; font-size:.76rem; font-weight:600; color:var(--rr-primary,#D72C42); padding:0; }
-    .rr-notif-bell-list { list-style:none; margin:0; padding:0; max-height:320px; overflow-y:auto; }
-    .rr-notif-item { display:flex; align-items:flex-start; padding:0; cursor:pointer; transition:background .12s; border-bottom:1px solid #f9fafb; }
-    .rr-notif-item:hover { background:#f9fafb; }
-    .rr-notif-item--unread { background:#eff6ff; }
-    .rr-notif-item--unread:hover { background:#dbeafe; }
-    .rr-notif-item-inner { display:flex; align-items:flex-start; gap:11px; padding:12px 14px; width:100%; }
-    .rr-notif-item-icon { font-size:.85rem; margin-top:2px; flex-shrink:0; }
-    .rr-notif-icon--status  { color:#059669; }
-    .rr-notif-icon--admin   { color:#7c3aed; }
-    .rr-notif-icon--driver  { color:#2563eb; }
-    .rr-notif-icon--default { color:var(--rr-primary,#D72C42); }
-    .rr-notif-item-body { flex:1; min-width:0; }
-    .rr-notif-item-title { font-size:.82rem; font-weight:600; color:#111827; line-height:1.35; }
-    .rr-notif-item-preview { font-size:.76rem; color:#6b7280; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .rr-notif-item-time { font-size:.72rem; color:#9ca3af; margin-top:3px; }
-    .rr-notif-dot { width:8px; height:8px; border-radius:50%; background:var(--rr-primary,#D72C42); flex-shrink:0; margin-top:4px; }
-    .rr-notif-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px 16px; gap:8px; color:#9ca3af; font-size:.83rem; }
-    .rr-notif-empty i { font-size:1.4rem; }
-    .rr-notif-bell-footer { border-top:1px solid #f3f4f6; padding:10px 16px; text-align:center; }
-    .rr-notif-bell-view-all { font-size:.78rem; font-weight:600; color:var(--rr-primary,#D72C42); text-decoration:none; }
-    .rr-notif-bell-view-all:hover { text-decoration:underline; }
-    </style>
-    @endauth
-
     <!-- JQUERY -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
@@ -171,26 +134,6 @@
                             $pfpUrl      = asset('assets/user/img/users/' . $pfp);
                         @endphp
 
-                        {{-- Notification Bell --}}
-                        <div class="rr-notif-bell-wrap" id="rrNotifBellWrap">
-                            <button id="rrNotifBellBtn" type="button" class="rr-notif-bell-btn" aria-label="Notifications">
-                                <i class="fa fa-bell"></i>
-                                <span class="rr-notif-bell-badge" id="rrNotifBellBadge" style="display:none;"></span>
-                            </button>
-                            <div id="rrNotifBellDropdown" class="rr-notif-bell-dropdown" style="display:none;">
-                                <div class="rr-notif-bell-header">
-                                    <span>Notifications</span>
-                                    <button id="rrNotifBellMarkAll" class="rr-notif-bell-clear">Mark all read</button>
-                                </div>
-                                <ul id="rrNotifBellList" class="rr-notif-bell-list">
-                                    <li class="rr-notif-empty"><i class="fa fa-bell-slash"></i><span>No notifications</span></li>
-                                </ul>
-                                <div class="rr-notif-bell-footer">
-                                    <a href="{{ route('ride-chat.notifHistory') }}" class="rr-notif-bell-view-all">View all notifications</a>
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="dropdown">
                             <div class="rr-user-menu" data-bs-toggle="dropdown" aria-expanded="false">
                                 <img src="{{ $pfpUrl }}" alt="{{ $displayName }}">
@@ -266,63 +209,3 @@
             </div>
         </div>
     </nav>
-
-    @auth('users')
-    <script>
-    window._rrNotifRoutes = {
-        notifBell:         '{{ route("ride-chat.notifBell") }}',
-        notifRead:         '/ride-chat/notif/:id/read',
-        statusNotifRead:   '/ride-chat/status-notif/:id/read',
-        markAllNotifsRead: '{{ route("ride-chat.markAllNotifsRead") }}',
-        notifHistoryPage:  '{{ route("ride-chat.notifHistory") }}',
-    };
-    </script>
-    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-    <script>
-    @php
-        $rrWsHost     = env('REVERB_HOST');
-        $rrWsPort     = (int) env('REVERB_PORT');
-        $rrForceTLS   = env('REVERB_SCHEME', 'http') === 'https';
-        $rrAuthUserId = Auth::guard('users')->id();
-    @endphp
-    (function () {
-        if (window._rrUserNotifPusher) return;
-        Pusher.logToConsole = false;
-        window._rrUserNotifPusher = new Pusher('{{ env("REVERB_APP_KEY", "local") }}', {
-            wsHost:            "{{ $rrWsHost }}",
-            wsPort:            {{ $rrWsPort }},
-            wssPort:           {{ $rrWsPort }},
-            forceTLS:          {{ $rrForceTLS ? 'true' : 'false' }},
-            enabledTransports: ['ws', 'wss'],
-            disableStats:      true,
-            cluster:           'mt1',
-            authEndpoint:      '/broadcasting/auth',
-            auth: { headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }
-        });
-        var ch = window._rrUserNotifPusher.subscribe('private-contact.user.{{ $rrAuthUserId }}');
-        ch.bind('ride.chat.message', function (e) {
-            // Skip the user's own outgoing messages.
-            if (e && e.sender_type === 'user') return;
-            // THIS tab: actively viewing this ride's tracking page — ride_chat.js
-            // handles auto-read and badge suppression directly.
-            if (typeof window.rrIsActiveChatFor === 'function' && e && e.request_id && window.rrIsActiveChatFor(e.request_id)) return;
-            // ANOTHER tab: check localStorage heartbeat (TTL 30 s, refreshed on focus).
-            // If another tab is actively tracking this ride, don't increment the bell.
-            try {
-                var _ts = localStorage.getItem('rrActiveTracker_' + (e && e.request_id));
-                if (_ts && (Date.now() - parseInt(_ts, 10)) < 30000) return;
-            } catch (ex) {}
-            if (window.rrNotifBell) window.rrNotifBell.onNewMessage();
-        });
-        ch.bind('ride.chat.notif.read', function (e) {
-            var count = (e && e.count && e.count > 0) ? e.count : null;
-            if (window.rrNotifBell) window.rrNotifBell.onNotifsRead(count);
-        });
-        ch.bind('request.status.updated', function () {
-            if (window.rrNotifBell) window.rrNotifBell.onNewStatusNotif();
-        });
-        window._rrUserNotifChannel = ch;
-    })();
-    </script>
-    <script src="{{ asset('assets/user/js/notificaiton.js') }}"></script>
-    @endauth
