@@ -315,16 +315,28 @@
                                 <div class="rr-fleet-card">
                                     <div class="rr-fleet-card__img">
                                         @if ($a->card_image)
-                                            <img src="{{ asset('assets/user/img/fleet/' . $a->card_image) }}"
+                                            <img src="{{ asset('assets/admin/img/fleet/' . $a->card_image) }}"
                                                 alt="{{ $a->card_title ?: $a->vehicle_number }}">
                                         @else
-                                            <img src="{{ asset('assets/user/img/other/ambulance.png') }}"
+                                            <img src="{{ asset('assets/admin/img/other/ambulance.png') }}"
                                                 alt="{{ $a->vehicle_number }}">
                                         @endif
                                     </div>
 
                                     <div class="rr-fleet-card__body">
-                                        <span class="rr-fleet-card__type">{{ $a->type }}</span>
+                                        <span class="rr-fleet-card__type">
+                                            @if( $a->type == 1 )
+                                                Basic Life Support
+                                            @elseif( $a->type == 2 )
+                                                Advanced Life Support
+                                            @elseif( $a->type == 3 )
+                                                Critical Care Transport
+                                            @elseif( $a->type == 4 )
+                                                Neonatal Transport
+                                            @elseif( $a->type == 5 )
+                                                Air Ambulance
+                                            @endif
+                                        </span>
                                         <h4>{{ $a->card_title ?: $a->vehicle_number }}</h4>
                                         <p>{{ $a->card_description ?: 'Fully equipped unit ready for any emergency.' }}</p>
 

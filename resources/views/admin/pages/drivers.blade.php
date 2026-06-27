@@ -74,7 +74,7 @@
                                 <td>
                                     @php
                                         $statuses = [
-                                            1 => ['class' => 'status-1', 'text' => 'Activer'],
+                                            1 => ['class' => 'status-1', 'text' => 'Active'],
                                             2 => ['class' => 'status-1', 'text' => 'Online'],
                                             3 => ['class' => 'status-2', 'text' => 'On Duty'],
                                             4 => ['class' => 'status-4', 'text' => 'Offline'],

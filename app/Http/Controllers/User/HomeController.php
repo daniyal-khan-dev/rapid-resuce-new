@@ -72,10 +72,10 @@ class HomeController extends Controller
     }
 
     public function firstAid()
-    {
-        return view('user.pages.first_aid');
+    { 
+        $contactInfo = Branch::orderBy('id', 'asc')->first();
+        return $this->noCache(response()->view('user.pages.first_aid', compact('contactInfo')));
     }
-
     public function terms()
     { 
         $contactInfo = Branch::orderBy('id', 'asc')->first();
