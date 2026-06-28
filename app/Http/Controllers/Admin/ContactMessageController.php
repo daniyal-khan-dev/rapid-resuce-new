@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\AdminReplyNotification;
 use App\Events\AdminTyping;
 use App\Events\ChatResolved;
 use App\Events\MessageMarkedRead;
@@ -25,7 +26,7 @@ class ContactMessageController extends Controller
 
     public function loadThread(Request $request, $id): JsonResponse
     {
-        $msg = ContactMessage::with('replies')->findOrFail($id);
+        $msg = ContactMessage::with(['user.details', 'replies'])->findOrFail($id);
         $wasUnread          = !$msg->admin_read;
         $unreadRepliesCount = $msg->replies()->where('sender_type', 'user')->where('is_read', false)->count();
         $msg->update(['admin_read' => true]);
@@ -38,18 +39,27 @@ class ContactMessageController extends Controller
             } catch (\Throwable $ignored) {}
         }
 
+        $profilePictureUrl = null;
+        if ($msg->user && $msg->user->details) {
+            $pic = $msg->user->details->profile_picture;
+            if ($pic && $pic !== 'default.jpg') {
+                $profilePictureUrl = asset('assets/user/img/users/' . $pic);
+            }
+        }
+
         return response()->json([
-            'id'           => $msg->id,
-            'name'         => $msg->name,
-            'email'        => $msg->email,
-            'subject'      => $msg->subject,
-            'message'      => $msg->message,
-            'is_user'      => (bool) $msg->user_id,
-            'user_id'      => $msg->user_id,
-            'is_resolved'  => (bool) $msg->is_resolved,
-            'time'         => $msg->created_at->format('d M Y, h:i A'),
-            'marked_count' => $markedCount,
-            'replies'      => $msg->replies->map(fn($r) => [
+            'id'                  => $msg->id,
+            'name'                => $msg->name,
+            'email'               => $msg->email,
+            'subject'             => $msg->subject,
+            'message'             => $msg->message,
+            'is_user'             => (bool) $msg->user_id,
+            'user_id'             => $msg->user_id,
+            'is_resolved'         => (bool) $msg->is_resolved,
+            'time'                => $msg->created_at->format('d M Y, h:i A'),
+            'marked_count'        => $markedCount,
+            'profile_picture_url' => $profilePictureUrl,
+            'replies'             => $msg->replies->map(fn($r) => [
                 'id'          => $r->id,
                 'sender_type' => $r->sender_type,
                 'message'     => $r->message,
@@ -73,7 +83,11 @@ class ContactMessageController extends Controller
             'message'            => $request->message,
         ]);
 
-        if (!$msg->user_id) {
+        if ($msg->user_id) {
+            try {
+                broadcast(new AdminReplyNotification($reply, (int) $msg->user_id));
+            } catch (\Throwable $ignored) {}
+        } else {
             try {
                 Mail::to($msg->email)->send(new AdminReplyMail($msg, $reply));
             } catch (\Throwable $ignored) {}

@@ -361,9 +361,9 @@
                         use App\Models\RideChatMessage;
                         $chatStatus = RideChatMessage::chatStatus($req->status);
                         $trackUser  = Auth::guard('users')->user();
-                        $rrWsHost   = env('REVERB_HOST');
+                        $rrWsHost   = env('REVERB_CLIENT_HOST', env('REVERB_HOST'));
                         $rrWsPort   = (int) env('REVERB_PORT');
-                        $rrForceTLS = env('REVERB_SCHEME', 'http') === 'https';
+                        $rrForceTLS = env('REVERB_CLIENT_SCHEME', env('REVERB_SCHEME', 'http')) === 'https';
                     @endphp
 
                 </div>

@@ -222,6 +222,23 @@
         _rtSyncDispatchPools(data);
     });
 
+    /* ── Contact: new message submitted ─────────────────────────────────── */
+    ch.bind('contact.submitted', function (data) {
+        if (typeof window.admContactMsgPrepend === 'function') {
+            window.admContactMsgPrepend(data);
+        }
+    });
+
+    /* ── Contact: user sent a follow-up reply ────────────────────────────── */
+    ch.bind('user.reply', function (data) {
+        if (typeof window.admContactThreadReply === 'function') {
+            window.admContactThreadReply(data);
+        }
+        if (typeof window.admAddReplyBadge === 'function') {
+            window.admAddReplyBadge(data.contact_message_id);
+        }
+    });
+
     /* ── Ride Chat: new message ──────────────────────────────────────────── */
     ch.bind('ride.chat.message', function (data) {
         if (data.sender_type === 'admin') return;

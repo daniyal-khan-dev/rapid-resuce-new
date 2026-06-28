@@ -1721,9 +1721,9 @@
     @auth('users')
     @php
         $bkAuthUser = Auth::guard('users')->user();
-        $bkWsHost   = env('REVERB_HOST');
+        $bkWsHost   = env('REVERB_CLIENT_HOST', env('REVERB_HOST'));
         $bkWsPort   = (int) env('REVERB_PORT');
-        $bkForceTLS = env('REVERB_SCHEME', 'http') === 'https';
+        $bkForceTLS = env('REVERB_CLIENT_SCHEME', env('REVERB_SCHEME', 'http')) === 'https';
     @endphp
     <script>
     window._rrBookingsWS = {
@@ -1819,6 +1819,21 @@
                     if (_bc) {
                         try { _bc.postMessage({ type: 'status_update', request_id: e.request_id, status: s }); } catch (ex) {}
                     }
+                });
+
+                // ── Contact: admin replied ──────────────────────────────────────
+                ch.bind('admin.reply', function (e) {
+                    if (typeof rrContactHistoryReply === 'function') rrContactHistoryReply(e);
+                });
+
+                // ── Contact: admin is typing ────────────────────────────────────
+                ch.bind('admin.typing', function (e) {
+                    if (typeof rrShowAdminTyping === 'function') rrShowAdminTyping(e);
+                });
+
+                // ── Contact: conversation resolved ──────────────────────────────
+                ch.bind('chat.resolved', function (e) {
+                    if (typeof rrChatResolved === 'function') rrChatResolved(e);
                 });
 
                 ch.bind('pusher:subscription_error', function (err) {

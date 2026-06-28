@@ -293,13 +293,13 @@
                         <button class="msg-filter-btn" id="filterGuest"><i class="fa fa-user-slash me-1"></i>Guests</button>
                     </div>
                 </div>
-                @if ($messages->isEmpty())
-                    <div class="card-body text-center py-5 text-muted">
-                        <i class="fa fa-inbox fa-2x d-block mb-3 opacity-25"></i>
-                        <p class="mb-0">No messages yet.</p>
-                    </div>
-                @else
                     <div class="card-body p-2">
+                        @if ($messages->isEmpty())
+                            <div id="msgEmptyState" class="text-center py-5 text-muted">
+                                <i class="fa fa-inbox fa-2x d-block mb-3 opacity-25"></i>
+                                <p class="mb-0">No messages yet.</p>
+                            </div>
+                        @endif
                         <div class="msg-list" id="msgList">
                             @foreach ($messages as $msg)
                                 <div class="msg-item {{ !$msg->admin_read ? 'unread' : '' }}"
@@ -347,7 +347,6 @@
                             <i class="fa fa-search d-block mb-2 opacity-50"></i>No messages match your search.
                         </div>
                     </div>
-                @endif
             </div>
         </div>
 
@@ -449,13 +448,15 @@
                         'X-CSRF-TOKEN': _csrf
                     }
                 });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 const d = await resp.json();
 
-                if (d.marked_count && d.marked_count > 0) {
-                    admUpdateBadge(-d.marked_count);
-                }
-
                 _cUserName = d.name || 'User';
+
+                // Build avatar HTML if profile picture exists
+                const avatarHtml = d.profile_picture_url
+                    ? `<img src="${cEsc(d.profile_picture_url)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+                    : `<div style="width:36px;height:36px;border-radius:50%;background:rgba(215,44,66,0.15);color:#f87184;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.85rem;"><i class="fa fa-user"></i></div>`;
 
                 // Header — with resolve button or resolved badge
                 const resolvedBadge = d.is_resolved ?
@@ -465,9 +466,12 @@
                     header.innerHTML =
                         `
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
-                    <div>
-                        <div style="font-weight:700;color:#fff;font-size:0.95rem;">${cEsc(d.name)}${!d.is_user ? ' <span style="font-size:0.7rem;background:rgba(99,102,241,0.2);color:#a5b4fc;border-radius:20px;padding:2px 8px;border:1px solid rgba(99,102,241,0.3);margin-left:6px;">Guest</span>' : ''}</div>
-                        <div style="font-size:0.78rem;color:var(--adm-muted);margin-top:2px;">${cEsc(d.email)} · ${cEsc(d.time)}</div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        ${avatarHtml}
+                        <div>
+                            <div style="font-weight:700;color:#fff;font-size:0.95rem;">${cEsc(d.name)}${!d.is_user ? ' <span style="font-size:0.7rem;background:rgba(99,102,241,0.2);color:#a5b4fc;border-radius:20px;padding:2px 8px;border:1px solid rgba(99,102,241,0.3);margin-left:6px;">Guest</span>' : ''}</div>
+                            <div style="font-size:0.78rem;color:var(--adm-muted);margin-top:2px;">${cEsc(d.email)} · ${cEsc(d.time)}</div>
+                        </div>
                     </div>
                     ${resolvedBadge}
                 </div>
@@ -600,9 +604,13 @@
         }
 
         // ── Real-time: new contact message prepended to list ─────────────────────────
-        function admContactMsgPrepend(e) {
+        window.admContactMsgPrepend = function admContactMsgPrepend(e) {
             const list = document.getElementById('msgList');
             if (!list) return;
+
+            // Hide empty state when first real-time message arrives
+            const emptyState = document.getElementById('msgEmptyState');
+            if (emptyState) emptyState.style.display = 'none';
 
             const div = document.createElement('div');
             div.className = 'msg-item unread';
@@ -632,7 +640,7 @@
         }
 
         // ── Real-time: user sent follow-up reply — append to current thread ───────────
-        function admContactThreadReply(e) {
+        window.admContactThreadReply = function admContactThreadReply(e) {
             if (String(_cMsgId) !== String(e.contact_message_id)) return;
             const body = document.getElementById('chatBody');
             if (!body) return;
@@ -641,7 +649,7 @@
         }
 
         // ── Real-time: mark a list item with a "reply" badge when a user replies ──────
-        function admAddReplyBadge(msgId) {
+        window.admAddReplyBadge = function admAddReplyBadge(msgId) {
             const item = document.getElementById('msgItem' + msgId);
             if (!item) return;
             // If the admin already has that thread open, don't show an indicator
