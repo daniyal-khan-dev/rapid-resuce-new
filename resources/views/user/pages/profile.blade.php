@@ -1,5 +1,6 @@
-@extends('user.layouts.user')
-@section('title', 'Profile | Rapid Rescue')
+@auth('users')
+    @extends('user.layouts.user')
+    @section('title', 'Profile | Rapid Rescue')
 @section('content')
     <style>
         .rr-row {
@@ -540,6 +541,7 @@
         }
 
         @keyframes rrTypingBounce {
+
             0%,
             80%,
             100% {
@@ -699,7 +701,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     {{-- MEDICAL CARD TAB --}}
                     <div class="tab-pane fade" id="v-pills-medprofile" role="tabpanel">
                         <div class="rr-profile-card">
@@ -902,7 +904,8 @@
                                                         $sBadge[$req->status] ?? 'background:#f3f4f6;color:#374151;';
                                                 @endphp
 
-                                                <tr id="rrBkRow_{{ $req->id }}" data-status="{{ $req->status }}" style="border-bottom:1px solid var(--rr-border);">
+                                                <tr id="rrBkRow_{{ $req->id }}" data-status="{{ $req->status }}"
+                                                    style="border-bottom:1px solid var(--rr-border);">
                                                     <td style="padding:12px 14px;color:var(--rr-text-muted);">
                                                         {{ $loop->iteration }}</td>
                                                     <td style="padding:12px 14px;">
@@ -921,14 +924,22 @@
                                                     <td style="padding:12px 14px;">
                                                         <span id="rrBkBadge_{{ $req->id }}"
                                                             style="padding:3px 10px;border-radius:20px;font-size:0.73rem;font-weight:700;{{ $sStyle }}">
-                                                            @if($req->status === '1') Pending
-                                                            @elseif($req->status === '2') Dispatched
-                                                            @elseif($req->status === '3') On Way
-                                                            @elseif($req->status === '4') Arrived
-                                                            @elseif($req->status === '5') Transporting
-                                                            @elseif($req->status === '6') Completed
-                                                            @elseif($req->status === '7') Cancelled
-                                                            @elseif($req->status === '8') Awaiting Acceptance
+                                                            @if ($req->status === '1')
+                                                                Pending
+                                                            @elseif($req->status === '2')
+                                                                Dispatched
+                                                            @elseif($req->status === '3')
+                                                                On Way
+                                                            @elseif($req->status === '4')
+                                                                Arrived
+                                                            @elseif($req->status === '5')
+                                                                Transporting
+                                                            @elseif($req->status === '6')
+                                                                Completed
+                                                            @elseif($req->status === '7')
+                                                                Cancelled
+                                                            @elseif($req->status === '8')
+                                                                Awaiting Acceptance
                                                             @endif
                                                         </span>
                                                     </td>
@@ -936,7 +947,8 @@
                                                         style="padding:12px 14px;color:var(--rr-text-muted);white-space:nowrap;">
                                                         {{ $req->created_at->format('d M Y') }}</td>
                                                     <td style="padding:12px 14px;">
-                                                        <a href="{{ route('tracking', $req->id) }}" class="rr-btn rr-btn--primary"
+                                                        <a href="{{ route('tracking', $req->id) }}"
+                                                            class="rr-btn rr-btn--primary"
                                                             style="padding:5px 12px;font-size:0.78rem;">
                                                             <i class="fa fa-map-location-dot"></i> Track
                                                         </a>
@@ -1692,8 +1704,23 @@
         </div>
     </div>
 
-    <!-- JS route vars for AJAX -->
+    @php
+        $bkAuthUser = Auth::guard('users')->user();
+        $bkWsHost = request()->getHost();
+        $bkWsPort = (int) env('REVERB_PORT', 8080);
+        $bkForceTLS = request()->secure();
+    @endphp
+
     <script>
+        window._rrBookingsWS = {
+            key: "{{ env('REVERB_APP_KEY') }}",
+            wsHost: "{{ $bkWsHost }}",
+            wsPort: {{ $bkWsPort }},
+            wssPort: {{ $bkWsPort }},
+            forceTLS: {{ $bkForceTLS ? 'true' : 'false' }},
+            userId: {{ $bkAuthUser->id }},
+        };
+
         window.routes = {
             checkAvail: "{{ route('checkAvailability') }}",
             updateProfile: "{{ route('profile.update') }}",
@@ -1716,142 +1743,6 @@
     <!-- CUSTOM JS -->
     <script src="{{ asset('assets/user/js/profile.js') }}"></script>
     <script src="{{ asset('assets/user/js/profileContact.js') }}"></script>
-
-    {{-- ── Real-time booking status sync ─────────────────────────────────────── --}}
-    @auth('users')
-    @php
-        $bkAuthUser = Auth::guard('users')->user();
-        $bkWsHost   = env('REVERB_CLIENT_HOST', env('REVERB_HOST'));
-        $bkWsPort   = (int) env('REVERB_PORT');
-        $bkForceTLS = env('REVERB_CLIENT_SCHEME', env('REVERB_SCHEME', 'http')) === 'https';
-    @endphp
-    <script>
-    window._rrBookingsWS = {
-        key:      "{{ env('REVERB_APP_KEY') }}",
-        wsHost:   "{{ $bkWsHost }}",
-        wsPort:   {{ $bkWsPort }},
-        wssPort:  {{ $bkWsPort }},
-        forceTLS: {{ $bkForceTLS ? 'true' : 'false' }},
-        userId:   {{ $bkAuthUser->id }},
-    };
-    </script>
     <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
-    <script>
-    (function () {
-        var _sBadgeStyle = {
-            '1': 'background:rgba(245,158,11,0.12);color:#b45309;',
-            '2': 'background:rgba(59,130,246,0.12);color:#1d4ed8;',
-            '3': 'background:rgba(139,92,246,0.12);color:#6d28d9;',
-            '4': 'background:rgba(20,184,166,0.12);color:#0f766e;',
-            '5': 'background:rgba(249,115,22,0.12);color:#c2410c;',
-            '6': 'background:rgba(34,197,94,0.12);color:#166534;',
-            '7': 'background:rgba(107,114,128,0.12);color:#374151;',
-            '8': 'background:rgba(245,158,11,0.12);color:#b45309;',
-        };
-        var _sLabel = {
-            '1': 'Pending',
-            '2': 'Dispatched',
-            '3': 'On Way',
-            '4': 'Arrived',
-            '5': 'Transporting',
-            '6': 'Completed',
-            '7': 'Cancelled',
-            '8': 'Awaiting Acceptance',
-        };
-
-        function applyStatusUpdate(reqId, status) {
-            var s      = String(status);
-            var row    = document.getElementById('rrBkRow_' + reqId);
-            var badge  = document.getElementById('rrBkBadge_' + reqId);
-            if (!badge) return;
-
-            if (row && row.getAttribute('data-status') === s) return;
-
-            badge.textContent = _sLabel[s] || s;
-            badge.style.cssText = 'padding:3px 10px;border-radius:20px;font-size:0.73rem;font-weight:700;' +
-                (_sBadgeStyle[s] || 'background:#f3f4f6;color:#374151;');
-
-            if (row) {
-                row.setAttribute('data-status', s);
-                row.style.transition = 'background .35s';
-                row.style.background = 'rgba(59,130,246,0.07)';
-                setTimeout(function () { row.style.background = ''; }, 1600);
-            }
-        }
-
-        // ── BroadcastChannel: sync across tabs without extra WebSocket calls ──
-        var _bc;
-        try {
-            _bc = new BroadcastChannel('rr_bookings_sync');
-            _bc.onmessage = function (ev) {
-                var d = ev.data;
-                if (d && d.type === 'status_update') {
-                    applyStatusUpdate(d.request_id, d.status);
-                }
-            };
-        } catch (e) {}
-
-        // ── Pusher / Reverb WebSocket ─────────────────────────────────────────
-        document.addEventListener('DOMContentLoaded', function () {
-            var cfg = window._rrBookingsWS;
-            if (!cfg || !cfg.key) return;
-
-            try {
-                var pusher = new Pusher(cfg.key, {
-                    wsHost:            cfg.wsHost,
-                    wsPort:            cfg.wsPort,
-                    wssPort:           cfg.wssPort,
-                    forceTLS:          cfg.forceTLS,
-                    enabledTransports: ['ws'],
-                    cluster:           'mt1',
-                    disableStats:      true,
-                    authEndpoint:      '/broadcasting/auth',
-                    auth: { headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content } }
-                });
-
-                var ch = pusher.subscribe('private-contact.user.' + cfg.userId);
-
-                ch.bind('request.status.updated', function (e) {
-                    var s = String(e.status);
-                    applyStatusUpdate(e.request_id, s);
-
-                    // Re-broadcast to any other open tabs (e.g. another my-bookings tab)
-                    if (_bc) {
-                        try { _bc.postMessage({ type: 'status_update', request_id: e.request_id, status: s }); } catch (ex) {}
-                    }
-                });
-
-                // ── Contact: admin replied ──────────────────────────────────────
-                ch.bind('admin.reply', function (e) {
-                    if (typeof rrContactHistoryReply === 'function') rrContactHistoryReply(e);
-                });
-
-                // ── Contact: admin is typing ────────────────────────────────────
-                ch.bind('admin.typing', function (e) {
-                    if (typeof rrShowAdminTyping === 'function') rrShowAdminTyping(e);
-                });
-
-                // ── Contact: conversation resolved ──────────────────────────────
-                ch.bind('chat.resolved', function (e) {
-                    if (typeof rrChatResolved === 'function') rrChatResolved(e);
-                });
-
-                ch.bind('pusher:subscription_error', function (err) {
-                    console.warn('[Reverb] My Bookings channel auth error:', err);
-                });
-
-                pusher.connection.bind('connected', function () {
-                    console.log('[Reverb] My Bookings: live status sync active for user', cfg.userId);
-                });
-
-                pusher.connection.bind('error', function (err) {
-                    console.warn('[Reverb] My Bookings connection error:', err);
-                });
-            } catch (err) {
-                console.warn('[Reverb] My Bookings WS setup failed:', err);
-            }
-        });
-    })();
-    </script>
-    @endauth
 @endsection
+@endauth

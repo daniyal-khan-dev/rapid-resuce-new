@@ -121,9 +121,18 @@
                 <i class="fa fa-map-location-dot"></i> Live Monitoring
             </a>
 
+            @php
+                $contactUnreadIds      = \App\Models\User\ContactMessage::where(function ($q) {
+                    $q->where('admin_read', false)
+                      ->orWhereHas('replies', fn ($q2) => $q2->where('sender_type', 'user')->where('is_read', false));
+                })->pluck('id')->toArray();
+                $contactMsgUnreadCount = count($contactUnreadIds);
+            @endphp
             <a href="{{ route('admin.contact-messages.grid') }}"
                 class="sidebar-nav-link {{ request()->routeIs('admin.contact-messages*') ? 'active' : '' }}">
                 <i class="fa fa-envelope-open-text"></i> Contact Messages
+                <span id="contactMsgNavBadge"
+                      style="display:{{ $contactMsgUnreadCount > 0 ? 'inline-flex' : 'none' }};margin-left:auto;background:#f59e0b;color:#fff;font-size:0.68rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 5px;line-height:1;">{{ $contactMsgUnreadCount > 99 ? '99+' : $contactMsgUnreadCount }}</span>
             </a>
 
             <div class="sidebar-section-label">Content</div>
@@ -249,9 +258,9 @@
         };
 
         @php
-            $rrWsHost   = env('REVERB_CLIENT_HOST', env('REVERB_HOST'));
-            $rrWsPort   = (int) env('REVERB_PORT');
-            $rrForceTLS = env('REVERB_CLIENT_SCHEME', env('REVERB_SCHEME', 'http')) === 'https';
+            $rrWsHost   = request()->getHost();
+            $rrWsPort   = (int) env('REVERB_PORT', 8080);
+            $rrForceTLS = request()->secure();
         @endphp
         window._emergencyBadgeCount = {{ $pendingEmergencyCount ?? 0 }};
 
@@ -289,9 +298,53 @@
                     var d = ev.data || {};
                     if (d.type === 'ride_chat_badge_set') {
                         window.admSetChatBadge(d.value);
+                    } else if (d.type === 'contact_badge_set') {
+                        window.admSetContactBadge(d.value);
+                    } else if (d.type === 'contact_badge_delta') {
+                        window.admDeltaContactBadge(d.delta);
                     }
                 };
             }
+        })();
+
+        window._rrContactUnreadSet = new Set({{ json_encode($contactUnreadIds ?? []) }});
+
+        (function () {
+            var _contactCount = {{ $contactMsgUnreadCount ?? 0 }};
+
+            window.admSetContactBadge = function (n) {
+                n = Math.max(0, parseInt(n, 10) || 0);
+                _contactCount = n;
+                var el = document.getElementById('contactMsgNavBadge');
+                if (!el) return;
+                if (n > 0) {
+                    el.textContent   = n > 99 ? '99+' : String(n);
+                    el.style.display = 'inline-flex';
+                } else {
+                    el.style.display = 'none';
+                }
+            };
+
+            window.admDeltaContactBadge = function (delta) {
+                window.admSetContactBadge(_contactCount + (parseInt(delta, 10) || 0));
+            };
+
+            window.admIncrementContactBadge = function () {
+                window.admDeltaContactBadge(+1);
+                // Do NOT broadcast via BroadcastChannel here.  Every admin tab
+                // has its own Reverb subscription and receives the same event
+                // independently, so each tab computes the correct count on its
+                // own.  Broadcasting a SET value to other tabs would cause a
+                // race: the receiving tab may apply the SET before its own
+                // Reverb event fires, then increment again on top of it —
+                // resulting in a doubled (or tripled) badge count.
+            };
+
+            window.admDecrementContactBadge = function (by) {
+                window.admDeltaContactBadge(-(parseInt(by, 10) || 1));
+                // Same reasoning: all tabs receive message.read from Reverb
+                // and decrement independently.  No BroadcastChannel needed.
+            };
         })();
 
         window._rrReverb = {

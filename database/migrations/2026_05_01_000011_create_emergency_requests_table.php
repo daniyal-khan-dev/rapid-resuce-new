@@ -13,8 +13,8 @@ return new class extends Migration
             $table->string('rreb_id', 20)->nullable()->unique();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('hospital_name')->nullable();
-            $table->decimal('hospital_lat', 10, 7)->nullable()->after('hospital_name');
-            $table->decimal('hospital_lng', 10, 7)->nullable()->after('hospital_lat');
+            $table->decimal('hospital_lat', 10, 7)->nullable();
+            $table->decimal('hospital_lng', 10, 7)->nullable();
             $table->string('mobile_no');
             $table->string('email')->nullable();
             $table->text('pickup_address');
@@ -24,8 +24,8 @@ return new class extends Migration
             $table->enum('status', ['1', '2', '3', '4', '5', '6', '7', '8'])->default('1');
             $table->foreignId('ambulance_id')->nullable()->constrained('ambulances')->nullOnDelete();
             $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
-            $table->decimal('accepted_lat', 10, 7)->nullable()->after('driver_id');
-            $table->decimal('accepted_lng', 10, 7)->nullable()->after('accepted_lat');
+            $table->decimal('accepted_lat', 10, 7)->nullable();
+            $table->decimal('accepted_lng', 10, 7)->nullable();
             $table->text('notes')->nullable();
             $table->timestamp('dispatched_at')->nullable();
             $table->timestamp('completed_at')->nullable();

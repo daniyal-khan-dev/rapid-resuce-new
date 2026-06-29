@@ -844,3 +844,131 @@ function openBookingDetail(btn) {
     var modal = new bootstrap.Modal(document.getElementById('bookingDetailModal'));
     modal.show();
 }
+
+(function() {
+    var _sBadgeStyle = {
+        '1': 'background:rgba(245,158,11,0.12);color:#b45309;',
+        '2': 'background:rgba(59,130,246,0.12);color:#1d4ed8;',
+        '3': 'background:rgba(139,92,246,0.12);color:#6d28d9;',
+        '4': 'background:rgba(20,184,166,0.12);color:#0f766e;',
+        '5': 'background:rgba(249,115,22,0.12);color:#c2410c;',
+        '6': 'background:rgba(34,197,94,0.12);color:#166534;',
+        '7': 'background:rgba(107,114,128,0.12);color:#374151;',
+        '8': 'background:rgba(245,158,11,0.12);color:#b45309;',
+    };
+    var _sLabel = {
+        '1': 'Pending',
+        '2': 'Dispatched',
+        '3': 'On Way',
+        '4': 'Arrived',
+        '5': 'Transporting',
+        '6': 'Completed',
+        '7': 'Cancelled',
+        '8': 'Awaiting Acceptance',
+    };
+
+    function applyStatusUpdate(reqId, status) {
+        var s = String(status);
+        var row = document.getElementById('rrBkRow_' + reqId);
+        var badge = document.getElementById('rrBkBadge_' + reqId);
+        if (!badge) return;
+        if (row && row.getAttribute('data-status') === s) return;
+
+        badge.textContent = _sLabel[s] || s;
+        badge.style.cssText = 'padding:3px 10px;border-radius:20px;font-size:0.73rem;font-weight:700;' + (_sBadgeStyle[s] || 'background:#f3f4f6;color:#374151;');
+
+        if (row) {
+            row.setAttribute('data-status', s);
+            row.style.transition = 'background .35s';
+            row.style.background = 'rgba(59,130,246,0.07)';
+            setTimeout(function() {
+                row.style.background = '';
+            }, 1600);
+        }
+    }
+
+    // ── BroadcastChannel: sync across tabs without extra WebSocket calls ──
+    var _bc;
+    try {
+        _bc = new BroadcastChannel('rr_bookings_sync');
+        _bc.onmessage = function(ev) {
+            var d = ev.data;
+            if (d && d.type === 'status_update') {
+                applyStatusUpdate(d.request_id, d.status);
+            }
+        };
+    } catch (e) {}
+
+    // ── Pusher / Reverb WebSocket ─────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        var cfg = window._rrBookingsWS;
+        if (!cfg || !cfg.key) return;
+
+        try {
+            var pusher = new Pusher(cfg.key, {
+                wsHost: cfg.wsHost,
+                wsPort: cfg.wsPort,
+                wssPort: cfg.wssPort,
+                forceTLS: cfg.forceTLS,
+                enabledTransports: ['ws', 'wss'],
+                cluster: 'mt1',
+                disableStats: true,
+                authEndpoint: '/broadcasting/auth',
+                auth: {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                            .content
+                    }
+                }
+            });
+
+            var ch = pusher.subscribe('private-contact.user.' + cfg.userId);
+
+            ch.bind('request.status.updated', function(e) {
+                var s = String(e.status);
+                applyStatusUpdate(e.request_id, s);
+
+                // Re-broadcast to any other open tabs (e.g. another my-bookings tab)
+                if (_bc) {
+                    try {
+                        _bc.postMessage({
+                            type: 'status_update',
+                            request_id: e.request_id,
+                            status: s
+                        });
+                    } catch (ex) {}
+                }
+            });
+
+            // ── Contact: admin replied ──────────────────────────────────────
+            ch.bind('admin.reply', function(e) {
+                if (typeof rrContactHistoryReply === 'function') rrContactHistoryReply(e);
+            });
+
+            // ── Contact: admin is typing ────────────────────────────────────
+            ch.bind('admin.typing', function(e) {
+                if (typeof rrShowAdminTyping === 'function') rrShowAdminTyping(e);
+            });
+
+            // ── Contact: conversation resolved ──────────────────────────────
+            ch.bind('chat.resolved', function(e) {
+                if (typeof rrChatResolved === 'function') rrChatResolved(e);
+            });
+
+            ch.bind('pusher:subscription_error', function(err) {
+                console.warn('[Reverb] My Bookings channel auth error:', err);
+            });
+
+            pusher.connection.bind('connected', function() {
+                console.log('[Reverb] My Bookings: live status sync active for user', cfg
+                    .userId);
+            });
+
+            pusher.connection.bind('error', function(err) {
+                console.warn('[Reverb] My Bookings connection error:', err);
+            });
+        } catch (err) {
+            console.warn('[Reverb] My Bookings WS setup failed:', err);
+        }
+    });
+})();

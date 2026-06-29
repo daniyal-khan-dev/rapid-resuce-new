@@ -227,6 +227,14 @@
         if (typeof window.admContactMsgPrepend === 'function') {
             window.admContactMsgPrepend(data);
         }
+        var _set = window._rrContactUnreadSet;
+        var _convId = String(data.message_id);
+        if (!_set || !_set.has(_convId)) {
+            if (_set) { _set.add(_convId); }
+            if (typeof window.admIncrementContactBadge === 'function') {
+                window.admIncrementContactBadge();
+            }
+        }
     });
 
     /* ── Contact: user sent a follow-up reply ────────────────────────────── */
@@ -236,6 +244,40 @@
         }
         if (typeof window.admAddReplyBadge === 'function') {
             window.admAddReplyBadge(data.contact_message_id);
+        }
+        var _set = window._rrContactUnreadSet;
+        var _convId = String(data.contact_message_id);
+        if (!_set || !_set.has(_convId)) {
+            if (_set) { _set.add(_convId); }
+            if (typeof window.admIncrementContactBadge === 'function') {
+                window.admIncrementContactBadge();
+            }
+        }
+    });
+
+    /* ── Contact: message/thread marked as read ──────────────────────────── */
+    ch.bind('message.read', function (data) {
+        if (typeof window.admContactMessageRead === 'function') {
+            window.admContactMessageRead(data);
+        }
+        // data.count is the number of *individual* messages marked read — we
+        // must NOT use it as the badge delta.  The badge counts conversations,
+        // so reading one thread always means −1, but only if that conversation
+        // was actually in the unread Set.
+        var _set = window._rrContactUnreadSet;
+        var _convId = String(data.message_id);
+        if (!_set || _set.has(_convId)) {
+            if (_set) { _set.delete(_convId); }
+            if (typeof window.admDecrementContactBadge === 'function') {
+                window.admDecrementContactBadge(1);
+            }
+        }
+    });
+
+    /* ── Contact: user is typing ─────────────────────────────────────────── */
+    ch.bind('user.typing', function (data) {
+        if (typeof window.admContactUserTyping === 'function') {
+            window.admContactUserTyping(data);
         }
     });
 
