@@ -4,7 +4,10 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Mail\PasswordResetCodeMail;
-use App\Mail\VerificationCodeMail;
+use App\Mail\EmailChangeInitiatedMail;
+use App\Mail\EmailChangedNewMail;
+use App\Mail\EmailChangedOldMail;
+use App\Mail\EmailChangeVerificationMail;
 use App\Models\User\EmailVerificationCode;
 use App\Models\User\MedicalCard;
 use App\Models\User\PasswordResetCode;
@@ -143,7 +146,8 @@ class UserProfileController extends Controller
         );
 
         try {
-            Mail::to($newEmail)->send(new VerificationCodeMail($code, $userDetail->first_name));
+            Mail::to($newEmail)->send(new EmailChangeVerificationMail($code, $userDetail->first_name));
+            Mail::to($userDetail->email)->send(new EmailChangeInitiatedMail($userDetail->first_name, $newEmail));    
         } catch (\Exception $e) {
             Log::error('Email change code mail failed: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to send code. Please try again.'], 500);
@@ -190,7 +194,8 @@ class UserProfileController extends Controller
         );
 
         try {
-            Mail::to($newEmail)->send(new VerificationCodeMail($code, $userDetail->first_name));
+            Mail::to($newEmail)->send(new EmailChangeVerificationMail($code, $userDetail->first_name));
+            Mail::to($userDetail->email)->send(new EmailChangeInitiatedMail($userDetail->first_name, $newEmail));
         } catch (\Exception $e) {
             Log::error('Email change resend failed: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to resend code.'], 500);
@@ -236,6 +241,18 @@ class UserProfileController extends Controller
         EmailVerificationCode::where('email', $oldEmail)->delete();
         $request->session()->forget('pending_email_change');
 
+        try {
+            Mail::to($newEmail)->send(new EmailChangedNewMail($userDetail->first_name));
+        } catch (\Exception $e) {
+            Log::error('Email change confirmation mail to new address failed: ' . $e->getMessage());
+        }
+
+        try {
+            Mail::to($oldEmail)->send(new EmailChangedOldMail($userDetail->first_name, $newEmail));
+        } catch (\Exception $e) {
+            Log::error('Email change confirmation mail to old address failed: ' . $e->getMessage());
+        }
+        
         return response()->json([
             'success'   => true,
             'message'   => 'Email updated and verified successfully.',
