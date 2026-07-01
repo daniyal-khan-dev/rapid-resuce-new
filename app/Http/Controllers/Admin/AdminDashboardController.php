@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Log;
 use App\Models\Admin\Ambulance;
-use App\Models\Driver\Driver;
 use App\Models\VisitorLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;

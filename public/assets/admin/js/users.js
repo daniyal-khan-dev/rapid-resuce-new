@@ -149,10 +149,13 @@ function viewUser(id) {
             /* ── Profile Card ── */
             html +=
                 '<div class="card" style="grid-column:1/-1;padding:1.25rem;display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;">';
-            html +=
-                '<div style="width:64px;height:64px;border-radius:50%;background:rgba(215,44,66,0.1);border:2px solid rgba(215,44,66,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
-            html +=
-                '<i class="fa fa-user" style="font-size:1.6rem;color:var(--adm-red);"></i></div>';
+            html += '<div style="width:64px;height:64px;border-radius:50%;background:rgba(215,44,66,0.1);border:2px solid rgba(215,44,66,0.25);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
+            if (d.profile_picture && d.profile_picture !== 'default.jpg') {
+                html += '<img src="/assets/user/img/users/' + escHtml(d.profile_picture) + '" style="width:100%;height:100%;object-fit:cover;" alt="">';
+            } else {
+                html += '<i class="fa fa-user" style="font-size:1.6rem;color:var(--adm-red);"></i>';
+            }
+            html += '</div>';
             html += '<div style="flex:1;min-width:0;">';
             html +=
                 '<div style="font-size:1.1rem;font-weight:700;color:#f1f5f9;">' +
