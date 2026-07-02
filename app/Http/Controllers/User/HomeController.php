@@ -55,7 +55,12 @@ class HomeController extends Controller
 
     public function rtAmbulances(): \Illuminate\Http\JsonResponse
     {
-        $items = Ambulance::whereNotNull('card_title')->orderBy('type')->get();
+        $items = Ambulance::whereNotNull('card_title')
+        ->whereHas('driver', function ($q) {
+            $q->where('status', 1);
+        })
+        ->orderBy('type')
+        ->get();
         return response()->json(['items' => $items]);
     }
 

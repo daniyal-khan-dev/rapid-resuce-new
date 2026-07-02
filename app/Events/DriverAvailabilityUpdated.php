@@ -17,7 +17,7 @@ class DriverAvailabilityUpdated implements ShouldBroadcastNow
 
     public function __construct(Driver $driver)
     {
-        $labels = ['1' => 'Online', '2' => 'Offline', '3' => 'Busy'];
+        $labels = ['1' => 'Online', '2' => 'On Duty', '3' => 'Offline'];
 
         $this->payload = [
             'driver_id'    => $driver->id,

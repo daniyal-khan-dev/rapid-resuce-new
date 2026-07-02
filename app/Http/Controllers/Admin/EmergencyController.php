@@ -7,7 +7,6 @@ use App\Events\DispatchRequestSent;
 use App\Events\DriverAvailabilityUpdated;
 use App\Events\EmergencyStatusUpdated;
 use App\Events\PendingRideTaken;
-use App\Events\RequestStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Ambulance;
 use App\Models\Driver\Driver;
@@ -21,12 +20,9 @@ class EmergencyController extends Controller
 {
     public function index()
     {
-        $requests   = EmergencyRequest::with(['user.details', 'ambulance', 'driver'])
-            ->whereNotIn('status', ['6', '7'])
-            ->latest()
-            ->paginate(20);
+        $requests   = EmergencyRequest::with(['user.details', 'ambulance', 'driver'])->whereNotIn('status', ['6', '7'])->latest()->paginate(20);
         $ambulances = Ambulance::where('status', '1')->get();
-        $drivers    = Driver::where('status', '1')->get();
+        $drivers    = Driver::where('status', 1)->where('availability', 1)->get();
         return view('admin.pages.emergency', compact('requests', 'ambulances', 'drivers'));
     }
 
@@ -134,9 +130,6 @@ class EmergencyController extends Controller
             Ambulance::where('id', $request->ambulance_id)->update(['status' => '2']);
             Driver::where('id', $request->driver_id)->update(['status' => '3']);
 
-            $dispatchedAmbulance = Ambulance::find($request->ambulance_id);
-            $dispatchedDriver    = Driver::find($request->driver_id);
-
             $admin = Auth::guard('admin')->user();
             logHistory($admin->username, $request->ip(), "Sent dispatch request for request #{$req->id} — ambulance ID: {$request->ambulance_id}, driver ID: {$request->driver_id}");
 
@@ -155,18 +148,6 @@ class EmergencyController extends Controller
             try {
                 broadcast(new PendingRideTaken((int) $req->id));
             } catch (\Throwable $ignored) {}
-
-            if ($dispatchedDriver) {
-                try {
-                    broadcast(new DriverAvailabilityUpdated($dispatchedDriver));
-                } catch (\Throwable $ignored) {}
-            }
-
-            if ($dispatchedAmbulance) {
-                try {
-                    broadcast(new AmbulanceAvailabilityUpdated($dispatchedAmbulance));
-                } catch (\Throwable $ignored) {}
-            }
 
             return response()->json([
                 'success' => true,
