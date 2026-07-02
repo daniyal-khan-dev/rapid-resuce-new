@@ -20,6 +20,7 @@ class Driver extends Authenticatable
         'license_no',
         'photo',
         'status',
+        'availability',
         'lat',
         'lng',
         'added_by',

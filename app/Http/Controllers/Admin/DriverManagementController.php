@@ -55,7 +55,7 @@ class DriverManagementController extends Controller
             'phone'      => 'required|regex:/^03[0-9]{9}$/',
             'license_no' => 'required|string|max:30',
             'password'   => 'required|min:6',
-            'status'     => 'required|in:1,2,3,4,5',
+            'status'     => 'required|in:1,2',
             'photo'      => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
         ], [
             'name.required'       => 'Driver name is required.',
@@ -97,14 +97,19 @@ class DriverManagementController extends Controller
                 'added_by'   => $admin->username,
             ]);
 
-            logHistory($admin->username, $request->ip(), "Added driver: {$driver->name} ({$driver->email})");
-    
             DB::commit();
-            try { broadcast(new ContentUpdated('driver', 'added', $driver->toArray(), $admin->name)); } catch (\Throwable $ignored) {}
+            $drivers = Driver::withCount([
+                'emergencyRequests as total_jobs',
+                'emergencyRequests as completed_jobs' => fn ($q) => $q->where('status', '6'),
+            ])->find($driver->id);
+            
+            
+            logHistory($admin->username, $request->ip(), "Added driver: {$drivers->name} ({$drivers->email})");
+            try { broadcast(new ContentUpdated('driver', 'added', $drivers->toArray(), $admin->name)); } catch (\Throwable $ignored) {}
             return response()->json([
                 'success'   => true,
                 'message'   => 'Driver added successfully.',
-                'driver'    => $driver
+                'driver'    => $drivers
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -120,7 +125,7 @@ class DriverManagementController extends Controller
             'email'      => ['required', 'email', Rule::unique('drivers', 'email')->ignore($id)],
             'phone'      => 'required|regex:/^03[0-9]{9}$/',
             'license_no' => 'required|string|max:30',
-            'status'     => 'required|in:1,2,3,4,5',
+            'status'     => 'required|in:1,2',
             'password'   => 'nullable|min:6',
             'photo'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ], [
@@ -151,17 +156,14 @@ class DriverManagementController extends Controller
             $photoUrl = null;
             $admin = Auth::guard('admin')->user();
 
-            // Block status change while driver is on an active ride
-            $incomingStatus = (string) $request->input('status', '');
-            if ($incomingStatus !== (string) $driver->status) {
-                $hasActiveRide = EmergencyRequest::where('driver_id', $driver->id)
-                    ->whereNotIn('status', ['6', '7'])
-                    ->exists();
+            // Block availability change while driver is on an active ride
+            if ($driver->availability == '2') {
+                $hasActiveRide = EmergencyRequest::where('driver_id', $driver->id)->whereNotIn('status', ['6', '7'])->exists();
                 if ($hasActiveRide) {
                     DB::rollBack();
                     return response()->json([
                         'success' => false,
-                        'message' => 'This driver is currently on an active ride and cannot update status.',
+                        'message' => 'This driver is currently on an active ride and cannot update.',
                     ], 422);
                 }
             }
@@ -194,15 +196,19 @@ class DriverManagementController extends Controller
                 $driver->password = Hash::make($request->password);
             }
             $driver->save();
-
-            logHistory($admin->username, $request->ip(), "Updated driver: {$driver->name} — status: {$driver->status}");
-
             DB::commit();
-            try { broadcast(new ContentUpdated('driver', 'updated', $driver->fresh()->toArray(), $admin->name)); } catch (\Throwable $ignored) {}
+
+            $drivers = Driver::withCount([
+                'emergencyRequests as total_jobs',
+                'emergencyRequests as completed_jobs' => fn ($q) => $q->where('status', '6'),
+            ])->find($driver->id);
+
+            logHistory($admin->username, $request->ip(), "Updated driver: {$drivers->name} — status: {$drivers->availability}");
+            try { broadcast(new ContentUpdated('driver', 'updated', $drivers->fresh()->toArray(), $admin->name)); } catch (\Throwable $ignored) {}
             return response()->json([
                 'success'   => true,
                 'message'   => 'Driver updated successfully.',
-                'driver'    => $driver
+                'driver'    => $drivers
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -221,7 +227,7 @@ class DriverManagementController extends Controller
                 ->whereNotIn('status', ['6', '7'])
                 ->exists();
 
-            if ($hasActiveRide || $driver->status === '3') {
+            if ($hasActiveRide || $driver->availability === '2') {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
@@ -229,8 +235,6 @@ class DriverManagementController extends Controller
                 ], 422);
             }
 
-            $driverName = $driver->name;
-            $driverId   = (int) $driver->id;
             if ($driver->photo && $driver->photo !== 'default.jpg') {
                 $photoPath = public_path('assets/driver/img/' . $driver->photo);
             
@@ -238,12 +242,22 @@ class DriverManagementController extends Controller
                     @unlink($photoPath);
                 }
             }
+            $drivers = Driver::withCount([
+                'emergencyRequests as total_jobs',
+                'emergencyRequests as completed_jobs' => fn ($q) => $q->where('status', '6'),
+            ])->find($driver->id);
             $driver->delete();
+
             $admin = Auth::guard('admin')->user();
-            logHistory($admin->username, request()->ip(), "Deleted driver: {$driverName}");
+            
+            logHistory($admin->username, request()->ip(), "Deleted driver: {$drivers->name}");
             DB::commit();
-            try { broadcast(new ContentUpdated('driver', 'deleted', ['id' => $driverId], $admin->name)); } catch (\Throwable $ignored) {}
-            return response()->json(['success' => true, 'message' => 'Driver removed successfully.']);
+            try { broadcast(new ContentUpdated('driver', 'deleted', ['id' => $drivers->id], $admin->name)); } catch (\Throwable $ignored) {}
+            return response()->json([
+                'success'   => true,
+                'message'   => 'Driver removed successfully.',
+                'driver'    => $drivers
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

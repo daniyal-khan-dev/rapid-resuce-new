@@ -17,11 +17,8 @@
         <input type="text" class="form-control w-auto" id="searchDrv" placeholder="Search by name, phone or email…" oninput="filterDriverTable()">
         <select class="form-select w-auto" id="filterDrvStatus" onchange="filterDriverTable()">
             <option value="">All Statuses</option>
-            <option value="1">Online</option>
-            <option value="2">Offline</option>
-            <option value="3">On Duty</option>
-            <option value="4">Offline</option>
-            <option value="5">Inactive</option>
+            <option value="1">Active</option>
+            <option value="2">Inactive</option>
         </select>
     </div>
 
@@ -42,13 +39,14 @@
                             <th>Phone</th>
                             <th>License No.</th>
                             <th>Status</th>
+                            <th>Availability</th>
                             <th>Jobs Done</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($drivers as $d)
-                            <tr class="pgd-row" data-driver-id="{{ $d->id }}" data-status="{{ $d->status }}" data-name="{{ strtolower($d->name) }}" data-email="{{ strtolower($d->email) }}" data-phone="{{ $d->phone }}">
+                            <tr class="pgd-row" data-driver-id="{{ $d->id }}" data-availability="{{ $d->availability }}" data-status="{{ $d->status }}" data-name="{{ strtolower($d->name) }}" data-email="{{ strtolower($d->email) }}" data-phone="{{ $d->phone }}">
                                 <td class="ps-4 fs-xs" style="color:var(--adm-muted);">{{ $loop->iteration }}</td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
@@ -75,15 +73,25 @@
                                     @php
                                         $statuses = [
                                             1 => ['class' => 'status-1', 'text' => 'Active'],
-                                            2 => ['class' => 'status-1', 'text' => 'Online'],
-                                            3 => ['class' => 'status-2', 'text' => 'On Duty'],
-                                            4 => ['class' => 'status-4', 'text' => 'Offline'],
-                                            5 => ['class' => 'status-4', 'text' => 'Inactive'],
+                                            2 => ['class' => 'status-4', 'text' => 'Inactive'],
                                         ];
                                         $status = $statuses[$d->status] ?? ['class' => '', 'text' => 'Unknown'];
                                     @endphp
                                     <span class="status-pill dri-rt-status {{ $status['class'] }}">
                                         {{ $status['text'] }}
+                                    </span>
+                                </td>
+                                <td>
+                                    @php
+                                        $availabilities = [
+                                            1 => ['class' => 'status-1', 'text' => 'Online'],
+                                            2 => ['class' => 'status-2', 'text' => 'On Duty'],
+                                            3 => ['class' => 'status-4', 'text' => 'Offline'],
+                                        ];
+                                        $availability = $availabilities[$d->availability] ?? ['class' => '', 'text' => 'Unknown'];
+                                    @endphp
+                                    <span class="status-pill dri-rt-status {{ $availability['class'] }}">
+                                        {{ $availability['text'] }}
                                     </span>
                                 </td>
                                 <td class="fs-xs" style="color:var(--adm-muted);">
@@ -107,7 +115,7 @@
                             </tr>
                         @endforeach
                         <tr id="driverNoResults" style="display:none;">
-                            <td colspan="8" class="text-center py-5" style="color:var(--adm-muted);">
+                            <td colspan="9" class="text-center py-5" style="color:var(--adm-muted);">
                                 <i class="fa fa-search d-block mb-2 opacity-50"></i>
                                 No drivers match your search.
                             </td>
@@ -194,10 +202,7 @@
                                 <select id="drv_status" name="status" class="form-select">
                                     <option value="0">Select Status</option>
                                     <option value="1">Active</option>
-                                    <option value="2">Online</option>
-                                    <option value="3">On Duty</option>
-                                    <option value="4">Offline</option>
-                                    <option value="5">Inactive</option>
+                                    <option value="2">Inactive</option>
                                 </select>
                             </div>
 
@@ -260,7 +265,6 @@
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('assets/admin/js/drivers.js') }}"></script>
     <script>
         if (window.PGD) {
             PGD.init({
@@ -274,4 +278,5 @@
             });
         }
     </script>
+    <script src="{{ asset('assets/admin/js/drivers.js') }}"></script>
 @endpush

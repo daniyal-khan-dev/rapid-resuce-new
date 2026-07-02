@@ -64,7 +64,7 @@ class DriverAuthController extends Controller
         }
 
         // Block only Inactive (status = 5) drivers; all other statuses can log in
-        if ((string) $driver->status === '5') {
+        if ((string) $driver->status === '2') {
             return response()->json([
                 'errors' => ['email' => ['Your account has been deactivated. Please contact support.']],
             ], 422);
@@ -74,7 +74,7 @@ class DriverAuthController extends Controller
         $request->session()->regenerate();
 
         // Auto-set status to Online (1) on login
-        $driver->status = '1';
+        $driver->availability = '1';
         $driver->save();
 
         try { broadcast(new DriverAvailabilityUpdated($driver)); } catch (\Throwable $ignored) {}
@@ -91,8 +91,8 @@ class DriverAuthController extends Controller
         $driver = Auth::guard('driver')->user();
 
         if ($driver) {
-            // Auto-set status to Offline (2) on logout
-            $driver->status = '2';
+            // Auto-set availability to Offline (3) on logout
+            $driver->availability = '3';
             $driver->setRememberToken(null);
             $driver->save();
 

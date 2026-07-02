@@ -17,7 +17,8 @@ return new class extends Migration
             $table->string('password');
             $table->string('license_no')->nullable();
             $table->string('photo')->default('default.jpg');
-            $table->enum('status', ['1', '2', '3', '4', '5'])->default('1');
+            $table->enum('status', ['1', '2'])->default('1');
+            $table->enum('availability', ['1', '2', '3'])->default('1');
             $table->decimal('lat', 10, 7)->nullable();
             $table->decimal('lng', 10, 7)->nullable();
             $table->string('added_by', 50);

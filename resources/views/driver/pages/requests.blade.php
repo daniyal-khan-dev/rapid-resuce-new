@@ -2233,17 +2233,17 @@
             });
 
             if (existingIdx !== -1) {
-                // Request already in list (was Pending) — update its status in _reqData and DOM
-                _reqData[existingIdx].status = '2';
+                // Request already in list — update its status to Awaiting Acceptance in _reqData and DOM
+                _reqData[existingIdx].status = '8';
                 _reqData[existingIdx].ambulance_no = e.ambulance_no || _reqData[existingIdx].ambulance_no;
                 _reqData[existingIdx].dispatched_at = e.time || _reqData[existingIdx].dispatched_at;
-                _reqData[existingIdx].allowed_next = ['3']; // no cancel after acceptance
+                _reqData[existingIdx].allowed_next = [];
 
                 // Update status badge in existing row
                 var badge = document.getElementById('reqStatusBadge_' + e.request_id);
                 if (badge) {
-                    badge.className = 'status-pill s2';
-                    badge.textContent = 'Dispatched';
+                    badge.className = 'status-pill s8';
+                    badge.textContent = 'Awaiting Acceptance';
                     var row = document.getElementById('reqRow_' + e.request_id);
                     if (row) row.style.animation = 'driNewRowFadeIn .45s ease both';
                 }
@@ -2254,7 +2254,7 @@
                 id: e.request_id,
                 rreb_id: e.rreb_id || '',
                 type: e.type || '1',
-                status: '2',
+                status: '8',
                 mobile_no: e.mobile_no || '—',
                 pickup_address: e.pickup_address || '—',
                 hospital_name: e.hospital_name || '—',
@@ -2271,14 +2271,14 @@
                 accepted_lng: null,
                 driver_lat: null,
                 driver_lng: null,
-                allowed_next: ['3'],
+                allowed_next: [],
             };
 
             _reqData.unshift(newReq);
 
             var typeLabel = newReq.type === '1' ? 'Emergency' : 'Non-Emergency';
             var typeCls = newReq.type === '1' ? 'emergency' : 'non-emergency';
-            var sLabel = 'Dispatched';
+            var sLabel = 'Awaiting Acceptance';
 
             var tbody = document.querySelector('.req-table tbody');
             if (!tbody) return;
@@ -2290,25 +2290,27 @@
             tr.id = 'reqRow_' + newReq.id;
             tr.style.cssText = 'animation:driNewRowFadeIn .45s ease both;';
             tr.innerHTML =
-                '<td><span class="mono">' + (newReq.rreb_id || '#' + newReq.id) + '</span></td>' +
+                '<td><span class="mono">' + esc(newReq.rreb_id || '#' + newReq.id) + '</span></td>' +
                 '<td><span class="status-pill ' + typeCls + '">' + typeLabel + '</span></td>' +
                 '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
-                (newReq.pickup_address.length > 32 ? newReq.pickup_address.substring(0, 32) + '…' : newReq
-                    .pickup_address) +
+                esc(newReq.pickup_address.length > 32 ? newReq.pickup_address.substring(0, 32) + '…' : newReq.pickup_address) +
                 '</td>' +
-                '<td>' + (newReq.hospital_name.length > 22 ? newReq.hospital_name.substring(0, 22) + '…' : newReq
-                    .hospital_name) + '</td>' +
-                '<td style="white-space:nowrap;">' + newReq.mobile_no + '</td>' +
-                '<td>' + (newReq.ambulance_no || '—') + '</td>' +
-                '<td><span class="status-pill s2" id="reqStatusBadge_' + newReq.id + '">' + sLabel + '</span></td>' +
-                '<td style="white-space:nowrap;color:rgba(255,255,255,.38);font-size:.77rem;">' + (newReq
-                    .dispatched_at || '—') + '</td>' +
+                '<td>' + esc(newReq.hospital_name.length > 22 ? newReq.hospital_name.substring(0, 22) + '…' : newReq.hospital_name) + '</td>' +
+                '<td style="white-space:nowrap;">' + esc(newReq.mobile_no) + '</td>' +
+                '<td>' + esc(newReq.ambulance_no || '—') + '</td>' +
+                '<td><span class="status-pill s8" id="reqStatusBadge_' + newReq.id + '">' + sLabel + '</span></td>' +
+                '<td style="white-space:nowrap;color:rgba(255,255,255,.38);font-size:.77rem;">' + esc(newReq.dispatched_at || '—') + '</td>' +
                 '<td><button class="btn-dri-icon btn-dri-icon--primary" title="View Details" onclick="viewRequestDetail(' +
                 newReq.id + ')">' +
                 '<i class="fa fa-eye"></i></button></td>';
 
             tbody.insertBefore(tr, tbody.firstChild);
         };
+
+        // Register the alias the layout's dispatch.request.sent handler calls.
+        // The layout uses driInsertDispatchRequestRow; driPrependRequestRow is the
+        // actual implementation defined on this page.
+        window.driInsertDispatchRequestRow = window.driPrependRequestRow;
 
         // Inject animation keyframe once
         (function() {
@@ -2320,11 +2322,6 @@
                 document.head.appendChild(st);
             }
         })();
-    </script>
-
-    {{-- NPM block removed --}}
-    <script>
-        /* placeholder — NPM section removed */
     </script>
 @endpush
 
